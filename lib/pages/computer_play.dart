@@ -17,7 +17,7 @@ showAlertDialog(BuildContext context, String result) {
     onPressed: () {
       Navigator.of(context).pop();
       Navigator.of(context).pop();
-      Navigator.pushNamed(context, '/two_players');
+      Navigator.pushNamed(context, '/computer_play');
     },
   );
 
