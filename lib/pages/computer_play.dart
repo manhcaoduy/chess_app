@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:chess_app/utils/utils.dart';
 import 'package:chess_vectors_flutter/chess_vectors_flutter.dart';
-import 'package:custom_timer/custom_timer.dart';
 
 showAlertDialog(BuildContext context, String result) {
   // set up the buttons
@@ -77,7 +76,7 @@ class _ComputerPlayState extends State<ComputerPlay> {
               Expanded(
                 child: Center(
                   child: ChessBoard(
-                    size: MediaQuery.of(context).size.width - 200,
+                    size: MediaQuery.of(context).size.width * 0.9,
                     onDraw: () {
                       showAlertDialog(context, "Draw");
                     },
@@ -90,7 +89,6 @@ class _ComputerPlayState extends State<ComputerPlay> {
                     },
                     onMove: (move) {
                       String _fen = controller.game.fen;
-
                       Future.delayed(Duration(milliseconds: 300)).then((_) {
                         final nextMove = getRandomMove(_fen);
                         if (nextMove != null) {

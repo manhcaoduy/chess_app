@@ -16,8 +16,10 @@ class PieceDetailPage extends StatefulWidget {
 class _PieceDetailPageState extends State<PieceDetailPage> {
   _PieceDetailPageState();
 
+  // Constants
   ChessBoardController controller = new ChessBoardController();
 
+  // Stream Events makes automatical move after every one second by sending non-sense data every one second
   Stream<int> streamEvent(fens, moves, clear) async* {
     int len = moves.length;
     int id = len;
@@ -79,6 +81,7 @@ class _PieceDetailPageState extends State<PieceDetailPage> {
     );
   }
 
+  // Title Widget
   Widget _buildTitle() {
     return Row(
       children: <Widget>[
@@ -98,6 +101,7 @@ class _PieceDetailPageState extends State<PieceDetailPage> {
     );
   }
 
+  // Content Widget
   Widget _buildContent() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 32.0),
@@ -108,6 +112,7 @@ class _PieceDetailPageState extends State<PieceDetailPage> {
     );
   }
 
+  // Chessboard Widget
   Widget _buildChessBoard(Size size) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16.0),

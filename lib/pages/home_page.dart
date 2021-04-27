@@ -1,7 +1,6 @@
 import 'package:chess_vectors_flutter/chess_vectors_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// import 'package:flutter_statusbar_manager/flutter_statusbar_manager.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -95,7 +94,7 @@ class _HomePageState extends State<HomePage> {
                         ), () {
                       Navigator.pushNamed(context, '/computer_play');
                     }),
-                    SectionTitle("Two Players"),
+                    SectionTitle("Offline Play"),
                     SectionCard(
                         WhitePawn(
                           size: 80.0,
@@ -105,6 +104,17 @@ class _HomePageState extends State<HomePage> {
                           style: TextStyle(fontSize: 18.0),
                         ), () {
                       Navigator.pushNamed(context, '/two_players');
+                    }),
+                    SectionTitle("Online Play"),
+                    SectionCard(
+                        WhitePawn(
+                          size: 80.0,
+                        ),
+                        Text(
+                          "Play with friends on the different device",
+                          style: TextStyle(fontSize: 18.0),
+                        ), () {
+                      Navigator.pushNamed(context, '/online_chess');
                     }),
                   ],
                 ),

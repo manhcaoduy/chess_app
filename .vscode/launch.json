@@ -10,6 +10,30 @@
             "name": "Launch Chrome against localhost",
             "url": "http://localhost:8080",
             "webRoot": "${workspaceFolder}"
-        }
-    ]
+        },
+        {
+			"name": "Android Phone",
+			"request": "launch",
+			"type": "dart",
+			"deviceId": "K7ENW19712004942"
+		},
+        {
+			"name": "Android Emulator",
+			"request": "launch",
+			"type": "dart",
+			"deviceId": "emulator-5554"
+		},
+        {
+			"name": "Another Emulator",
+			"request": "launch",
+			"type": "dart",
+			"deviceId": "emulator-5556"
+		},
+    ],
+    "compounds": [
+		{
+			"name": "All Devices",
+			"configurations": ["Android Phone", "Android Emulator", "Another Emulator"],
+		}
+	]
 }

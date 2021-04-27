@@ -32,6 +32,9 @@ dependencies:
   chess_vectors_flutter: ^1.0.12
   flutter_chess_board: ^0.9.6
   custom_timer: ^0.0.3
+  firebase_core: ^1.0.3
+  firebase_database: ^6.1.2
+  circular_countdown_timer: ^0.2.0
   
 dev_dependencies:
   flutter_test:

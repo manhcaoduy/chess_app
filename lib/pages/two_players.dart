@@ -45,16 +45,21 @@ class TwoPlayers extends StatefulWidget {
 }
 
 class _TwoPlayersState extends State<TwoPlayers> {
+  // Constants
   final ChessBoardController controller = new ChessBoardController();
   final CustomTimerController whiteController = new CustomTimerController();
   final CustomTimerController blackController = new CustomTimerController();
   int turn = 0;
+  bool isTimeOut = false;
+  String _fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
+  // White Move callback
   void whiteMove() {
     whiteController.pause();
     blackController.start();
   }
 
+  // Black Move callback
   void blackMove() {
     whiteController.start();
     blackController.pause();
@@ -64,6 +69,8 @@ class _TwoPlayersState extends State<TwoPlayers> {
   void initState() {
     super.initState();
     turn = 0;
+    _fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    isTimeOut = true;
   }
 
   @override
@@ -77,16 +84,16 @@ class _TwoPlayersState extends State<TwoPlayers> {
             children: [
               CustomTimer(
                 controller: blackController,
-                from: Duration(minutes: 1),
+                from: Duration(seconds: 10),
                 to: Duration(seconds: 0),
                 builder: (CustomTimerRemainingTime remaining) {
                   return Padding(
                     padding: const EdgeInsets.only(
-                        left: 100.0, right: 100.0, bottom: 5.0, top: 5.0),
+                        left: 20.0, right: 20.0, bottom: 5.0, top: 5.0),
                     child: Row(
                       children: [
                         BlackKing(
-                          size: MediaQuery.of(context).size.width * 0.07,
+                          size: MediaQuery.of(context).size.width * 0.1,
                         ),
                         Expanded(
                           child: Padding(
@@ -114,7 +121,9 @@ class _TwoPlayersState extends State<TwoPlayers> {
                   );
                 },
                 onFinish: () {
+                  isTimeOut = true;
                   whiteController.pause();
+                  blackController.pause();
                   showAlertDialog(
                       context, "Black has lost on time. White wins");
                 },
@@ -122,7 +131,7 @@ class _TwoPlayersState extends State<TwoPlayers> {
               Expanded(
                 child: Center(
                   child: ChessBoard(
-                    size: MediaQuery.of(context).size.width - 200,
+                    size: MediaQuery.of(context).size.width * 0.9,
                     onDraw: () {
                       whiteController.pause();
                       blackController.pause();
@@ -138,12 +147,14 @@ class _TwoPlayersState extends State<TwoPlayers> {
                       }
                     },
                     onMove: (move) {
-                      if (turn == 0) {
-                        whiteMove();
-                      } else {
-                        blackMove();
+                      if (isTimeOut == false) {
+                        if (turn == 0) {
+                          whiteMove();
+                        } else {
+                          blackMove();
+                        }
+                        turn = 1 - turn;
                       }
-                      turn = 1 - turn;
                     },
                     onCheck: (color) {},
                     chessBoardController: controller,
@@ -153,16 +164,16 @@ class _TwoPlayersState extends State<TwoPlayers> {
               ),
               CustomTimer(
                 controller: whiteController,
-                from: Duration(minutes: 1),
+                from: Duration(seconds: 10),
                 to: Duration(hours: 0),
                 builder: (CustomTimerRemainingTime remaining) {
                   return Padding(
                     padding: const EdgeInsets.only(
-                        left: 100.0, right: 100.0, bottom: 5.0, top: 5.0),
+                        left: 20.0, right: 20.0, bottom: 5.0, top: 5.0),
                     child: Row(
                       children: [
                         WhiteKing(
-                          size: MediaQuery.of(context).size.width * 0.07,
+                          size: MediaQuery.of(context).size.width * 0.1,
                         ),
                         Expanded(
                           child: Padding(
@@ -191,6 +202,8 @@ class _TwoPlayersState extends State<TwoPlayers> {
                 },
                 onBuildAction: CustomTimerAction.auto_start,
                 onFinish: () {
+                  isTimeOut = true;
+                  whiteController.pause();
                   blackController.pause();
                   showAlertDialog(
                       context, "White has lost on time. Black wins");

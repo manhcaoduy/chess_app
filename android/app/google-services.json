@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "744263812115",
+    "firebase_url": "https://chess-c1912-default-rtdb.firebaseio.com",
+    "project_id": "chess-c1912",
+    "storage_bucket": "chess-c1912.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744263812115:android:8963a7d21e9c0c8bc9abe6",
+        "android_client_info": {
+          "package_name": "com.example.chess_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "744263812115-kmnhddrkd8e3qqeq81n6un8o4v9lauqc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdSwL00tBLLK18VNdAhSX-Cqqxk0c_G8o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "744263812115-kmnhddrkd8e3qqeq81n6un8o4v9lauqc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
