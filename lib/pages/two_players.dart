@@ -3,42 +3,6 @@ import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:custom_timer/custom_timer.dart';
 import 'package:chess_vectors_flutter/chess_vectors_flutter.dart';
 
-showAlertDialog(BuildContext context, String result) {
-  // set up the buttons
-  Widget chessButton = TextButton(
-    child: Text("Watch chessboard"),
-    onPressed: () {
-      Navigator.of(context).pop();
-    },
-  );
-  Widget rematchButton = TextButton(
-    child: Text("Rematch"),
-    onPressed: () {
-      Navigator.of(context).pop();
-      Navigator.of(context).pop();
-      Navigator.pushNamed(context, '/two_players');
-    },
-  );
-
-  // set up the AlertDialog
-  AlertDialog alert = AlertDialog(
-    title: Text("Game Over"),
-    content: Text(result),
-    actions: [
-      chessButton,
-      rematchButton,
-    ],
-  );
-
-  // show the dialog
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return alert;
-    },
-  );
-}
-
 class TwoPlayers extends StatefulWidget {
   @override
   _TwoPlayersState createState() => _TwoPlayersState();
@@ -50,8 +14,10 @@ class _TwoPlayersState extends State<TwoPlayers> {
   final CustomTimerController whiteController = new CustomTimerController();
   final CustomTimerController blackController = new CustomTimerController();
   int turn = 0;
-  bool isTimeOut = false;
+  bool isGameOver = false;
+  String endgameMessenge = '';
   String _fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  bool isPause = true;
 
   // White Move callback
   void whiteMove() {
@@ -65,154 +31,290 @@ class _TwoPlayersState extends State<TwoPlayers> {
     blackController.pause();
   }
 
+  void dialog(BuildContext context, String messenge) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text(messenge, style: TextStyle(fontSize: 20)),
+          );
+        });
+  }
+
   @override
   void initState() {
     super.initState();
     turn = 0;
     _fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-    isTimeOut = true;
+    isGameOver = false;
+    endgameMessenge = '';
+    isPause = false;
   }
 
   @override
   Widget build(BuildContext context) {
+    print(MediaQuery.of(context).size.height);
+    Future.delayed(const Duration(milliseconds: 200)).then((_) {
+      controller.game.load(_fen);
+      controller.refreshBoard();
+    });
+
     return Scaffold(
         appBar: AppBar(
-          title: Text("2 Players"),
+          title: Text(isGameOver ? endgameMessenge : "2 Players"),
+          centerTitle: true,
         ),
         body: Container(
           child: Column(
             children: [
-              CustomTimer(
-                controller: blackController,
-                from: Duration(seconds: 10),
-                to: Duration(seconds: 0),
-                builder: (CustomTimerRemainingTime remaining) {
-                  return Padding(
-                    padding: const EdgeInsets.only(
-                        left: 20.0, right: 20.0, bottom: 5.0, top: 5.0),
-                    child: Row(
-                      children: [
-                        BlackKing(
-                          size: MediaQuery.of(context).size.width * 0.1,
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20.0),
-                            child: Text("Black",
-                                style: TextStyle(
-                                    fontSize: 20.0,
-                                    fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.only(
-                              left: 20, right: 20, top: 10.0, bottom: 10.0),
-                          child: Text(
-                            "${remaining.minutes}:${remaining.seconds}",
-                            style: TextStyle(fontSize: 20.0),
-                          ),
-                          decoration: BoxDecoration(
-                              color: Colors.grey,
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10.0))),
-                        )
-                      ],
-                    ),
-                  );
-                },
-                onFinish: () {
-                  isTimeOut = true;
-                  whiteController.pause();
-                  blackController.pause();
-                  showAlertDialog(
-                      context, "Black has lost on time. White wins");
-                },
-              ),
               Expanded(
-                child: Center(
-                  child: ChessBoard(
-                    size: MediaQuery.of(context).size.width * 0.9,
-                    onDraw: () {
-                      whiteController.pause();
-                      blackController.pause();
-                      showAlertDialog(context, "Draw");
-                    },
-                    onCheckMate: (loser) {
-                      whiteController.pause();
-                      blackController.pause();
-                      if (loser == PieceColor.Black) {
-                        showAlertDialog(context, "Checkmate. White wins");
-                      } else {
-                        showAlertDialog(context, "Checkmate. Black wins");
-                      }
-                    },
-                    onMove: (move) {
-                      if (isTimeOut == false) {
-                        if (turn == 0) {
-                          whiteMove();
-                        } else {
-                          blackMove();
-                        }
-                        turn = 1 - turn;
-                      }
-                    },
-                    onCheck: (color) {},
-                    chessBoardController: controller,
-                    enableUserMoves: true,
-                  ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    RotationTransition(
+                      turns: new AlwaysStoppedAnimation(180 / 360),
+                      child: CustomTimer(
+                        controller: blackController,
+                        from: Duration(minutes: 10),
+                        to: Duration(seconds: 0),
+                        builder: (CustomTimerRemainingTime remaining) {
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                                left: 20.0, right: 20.0, bottom: 5.0, top: 5.0),
+                            child: Row(
+                              children: [
+                                Image.asset(
+                                  "assets/images/garry_kasparov.jpg",
+                                  width: 70,
+                                  height: 70,
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(20.0),
+                                    child: Text("Garry Kasparov",
+                                        style: TextStyle(
+                                            fontSize: 20.0,
+                                            fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                                Container(
+                                  padding: EdgeInsets.only(
+                                      left: 20,
+                                      right: 20,
+                                      top: 10.0,
+                                      bottom: 10.0),
+                                  child: Text(
+                                    "${remaining.minutes}:${remaining.seconds}",
+                                    style: TextStyle(fontSize: 20.0),
+                                  ),
+                                  decoration: BoxDecoration(
+                                      color: Colors.grey,
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10.0))),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        onFinish: () {
+                          if (isGameOver) return;
+                          whiteController.pause();
+                          blackController.pause();
+                          dialog(context, "Black has lost on time. White wins");
+                          setState(() {
+                            isGameOver = true;
+                            endgameMessenge = "Black lost on time";
+                          });
+                        },
+                      ),
+                    ),
+                    Center(
+                      child: ChessBoard(
+                        size: (MediaQuery.of(context).size.height > 700
+                            ? MediaQuery.of(context).size.width
+                            : MediaQuery.of(context).size.width * 0.9),
+                        onDraw: () {
+                          if (isGameOver) return;
+                          whiteController.pause();
+                          blackController.pause();
+                          dialog(context, "Draw");
+                          setState(() {
+                            isGameOver = true;
+                            endgameMessenge = "Draw";
+                          });
+                        },
+                        onCheckMate: (loser) {
+                          if (isGameOver) return;
+                          whiteController.pause();
+                          blackController.pause();
+
+                          dialog(
+                              context,
+                              ((loser == PieceColor.Black)
+                                  ? "Checkmate. White wins"
+                                  : "Checkmate. Black wins"));
+                          setState(() {
+                            isGameOver = true;
+                            endgameMessenge = ((loser == PieceColor.Black)
+                                ? "Checkmate. White wins"
+                                : "Checkmate. Black wins");
+                          });
+                        },
+                        onMove: (move) {
+                          if (isGameOver) return;
+                          if (turn == 0) {
+                            whiteMove();
+                          } else {
+                            blackMove();
+                          }
+                          turn = 1 - turn;
+                          _fen = controller.game.fen;
+                        },
+                        onCheck: (color) {},
+                        chessBoardController: controller,
+                        enableUserMoves: (isGameOver ? false : true),
+                        boardType: BoardType.darkBrown,
+                      ),
+                    ),
+                    CustomTimer(
+                      controller: whiteController,
+                      from: Duration(minutes: 10),
+                      to: Duration(hours: 0),
+                      builder: (CustomTimerRemainingTime remaining) {
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                              left: 20.0, right: 20.0, bottom: 5.0, top: 5.0),
+                          child: Row(
+                            children: [
+                              Image.asset(
+                                "assets/images/magnus_carlsen.jpeg",
+                                width: 70,
+                                height: 70,
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(10.0),
+                                  child: Text("Magnus Carlsen",
+                                      style: TextStyle(
+                                          fontSize: 20.0,
+                                          fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                              Container(
+                                padding: EdgeInsets.only(
+                                    left: 20,
+                                    right: 20,
+                                    top: 10.0,
+                                    bottom: 10.0),
+                                child: Text(
+                                  "${remaining.minutes}:${remaining.seconds}",
+                                  style: TextStyle(fontSize: 20.0),
+                                ),
+                                decoration: BoxDecoration(
+                                    color: Colors.grey,
+                                    borderRadius: BorderRadius.all(
+                                        Radius.circular(10.0))),
+                              )
+                            ],
+                          ),
+                        );
+                      },
+                      onBuildAction: CustomTimerAction.auto_start,
+                      onFinish: () {
+                        if (isGameOver) return;
+                        whiteController.pause();
+                        blackController.pause();
+                        dialog(context, "White has lost on time. Black wins");
+                        setState(() {
+                          isGameOver = true;
+                          endgameMessenge = "White lost on time";
+                        });
+                      },
+                    ),
+                  ],
                 ),
               ),
-              CustomTimer(
-                controller: whiteController,
-                from: Duration(seconds: 10),
-                to: Duration(hours: 0),
-                builder: (CustomTimerRemainingTime remaining) {
-                  return Padding(
-                    padding: const EdgeInsets.only(
-                        left: 20.0, right: 20.0, bottom: 5.0, top: 5.0),
-                    child: Row(
-                      children: [
-                        WhiteKing(
-                          size: MediaQuery.of(context).size.width * 0.1,
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20.0),
-                            child: Text("White",
-                                style: TextStyle(
-                                    fontSize: 20.0,
-                                    fontWeight: FontWeight.bold)),
+              Padding(
+                padding: const EdgeInsets.only(
+                  bottom: 10,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        if (isGameOver) return;
+                      },
+                      icon: Container(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 5.0),
+                          child: Icon(
+                            // Icons.play_arrow,
+                            Icons.pause_outlined,
+                            color: Colors.white,
+                            size: 40.0,
                           ),
                         ),
-                        Container(
-                          padding: EdgeInsets.only(
-                              left: 20, right: 20, top: 10.0, bottom: 10.0),
-                          child: Text(
-                            "${remaining.minutes}:${remaining.seconds}",
-                            style: TextStyle(fontSize: 20.0),
-                          ),
-                          decoration: BoxDecoration(
-                              color: Colors.grey,
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10.0))),
-                        )
-                      ],
+                      ),
                     ),
-                  );
-                },
-                onBuildAction: CustomTimerAction.auto_start,
-                onFinish: () {
-                  isTimeOut = true;
-                  whiteController.pause();
-                  blackController.pause();
-                  showAlertDialog(
-                      context, "White has lost on time. Black wins");
-                },
-              ),
+                    IconButton(
+                      onPressed: () {
+                        showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: Text('New game'),
+                                content: SingleChildScrollView(
+                                  child: ListBody(
+                                    children: <Widget>[
+                                      Text(
+                                          'Do you really want to restart a new game.'),
+                                    ],
+                                  ),
+                                ),
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: Text('No'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                  ),
+                                  TextButton(
+                                    child: Text('Yes'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      whiteController.reset();
+                                      blackController.reset();
+                                      whiteController.start();
+                                      setState(() {
+                                        turn = 0;
+                                        _fen =
+                                            'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+                                        isGameOver = false;
+                                        endgameMessenge = '';
+                                        isPause = false;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              );
+                            });
+                      },
+                      icon: Container(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 5.0),
+                          child: Icon(
+                            Icons.autorenew,
+                            color: Colors.white,
+                            size: 40.0,
+                          ),
+                        ),
+                      ),
+                    )
+                  ],
+                ),
+              )
             ],
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white,
           ),
         ));
   }

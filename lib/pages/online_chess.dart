@@ -25,76 +25,71 @@ class _OnlineMainScreenState extends State<OnlineMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
-
     return Scaffold(
+      appBar: AppBar(
+        title: Text("Online Play"),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: Center(
           child: ListView(
             children: <Widget>[
               Container(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    Container(
-                      child: Row(
-                        children: <Widget>[
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0, vertical: 36.0),
-                            child: FlutterLogo(
-                              size: 30.0,
-                            ),
-                          ),
-                          Text(
-                            "Online Chess",
-                            style: TextStyle(fontSize: 30.0),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    SectionTitle("Create a new game"),
+                    SizedBox(
+                      height: 20,
+                    ),
                     SectionCard(
-                        Icon(Icons.create, size: 30.0),
-                        Text(
-                          "Create a new game with a unique ID for others to join.",
-                          style: TextStyle(fontSize: 18.0),
-                        ), () {
+                        Padding(
+                          padding: const EdgeInsets.only(left: 20),
+                          child: Image.asset(
+                            "assets/images/create_game.jpeg",
+                            width: 100,
+                            height: 100,
+                          ),
+                        ),
+                        "Create a new game",
+                        "Create a new game with a unique ID for others to join.",
+                        () {
                       Navigator.pushNamed(context, '/online_chess/create');
                     }),
-                    SectionTitle("Join a game"),
+                    SizedBox(
+                      height: 20,
+                    ),
                     SectionCard(
-                        WhitePawn(
-                          size: 80.0,
+                        Padding(
+                          padding: const EdgeInsets.only(left: 20),
+                          child: Image.asset(
+                            "assets/images/join_game.jpeg",
+                            width: 100,
+                            height: 100,
+                          ),
                         ),
-                        Text(
-                          "Join a game by ID",
-                          style: TextStyle(fontSize: 18.0),
-                        ), () {
+                        "Join a game",
+                        "Join a game by ID", () {
                       Navigator.pushNamed(context, '/online_chess/join');
                     }),
-                    SectionTitle("Spectate a game"),
+                    SizedBox(
+                      height: 20,
+                    ),
                     SectionCard(
-                        WhitePawn(
-                          size: 80.0,
+                        Padding(
+                          padding: const EdgeInsets.only(left: 20),
+                          child: Image.asset(
+                            "assets/images/watch_game.jpg",
+                            width: 100,
+                            height: 100,
+                          ),
                         ),
-                        Text(
-                          "Watch a game by ID",
-                          style: TextStyle(fontSize: 18.0),
-                        ), () {
+                        "Spectate a game",
+                        "Watch a game by ID", () {
                       Navigator.pushNamed(context, '/online_chess/watch');
                     }),
                   ],
                 ),
               ),
-              Container(),
             ],
           ),
         ),

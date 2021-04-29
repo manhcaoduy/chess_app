@@ -5,42 +5,6 @@ import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:chess_vectors_flutter/chess_vectors_flutter.dart';
 
-showAlertDialog(BuildContext context, String result) {
-  // set up the buttons
-  Widget chessButton = TextButton(
-    child: Text("Watch chessboard"),
-    onPressed: () {
-      Navigator.of(context).pop();
-    },
-  );
-  Widget rematchButton = TextButton(
-    child: Text("Exit"),
-    onPressed: () {
-      Navigator.of(context).pop();
-      Navigator.of(context).pop();
-      Navigator.pushNamed(context, '/online_chess');
-    },
-  );
-
-  // set up the AlertDialog
-  AlertDialog alert = AlertDialog(
-    title: Text("Game Over"),
-    content: Text(result),
-    actions: [
-      chessButton,
-      rematchButton,
-    ],
-  );
-
-  // show the dialog
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return alert;
-    },
-  );
-}
-
 class OnlineWatchScreen extends StatefulWidget {
   @override
   _OnlineWatchScreenState createState() => _OnlineWatchScreenState();
@@ -58,6 +22,8 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
   String player1 = "";
   String player2 = "";
   bool createWhite = true;
+  bool isGameOver = false;
+  String endgameMessenge = '';
 
   int experienceIndex = 0;
 
@@ -77,13 +43,10 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
     createWhite = true;
   }
 
-  void dialog(String messenge) {
+  void dialog(BuildContext context, String messenge) {
     showDialog(
         context: context,
         builder: (context) {
-          Future.delayed(Duration(seconds: 1), () {
-            Navigator.of(context).pop(true);
-          });
           return AlertDialog(
             title: Text(messenge, style: TextStyle(fontSize: 20)),
           );
@@ -114,6 +77,7 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
                           horizontal: minValue, vertical: minValue),
                       child: TextFormField(
                         controller: _roomIdController,
+                        style: TextStyle(color: Colors.black),
                         keyboardType: TextInputType.text,
                         maxLines: 2,
                         validator: roomIdValidator,
@@ -124,7 +88,10 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
                             contentPadding:
                                 EdgeInsets.symmetric(horizontal: minValue),
                             labelStyle: TextStyle(
-                                fontSize: 16.0, color: Colors.black87)),
+                              fontSize: 16.0,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.bold,
+                            )),
                       ),
                     ),
                   ),
@@ -150,10 +117,10 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
                               .once()
                               .then((snapshot) {
                             if (snapshot.value == null) {
-                              dialog(
+                              dialog(context,
                                   "Room ID $inputRoomId has not been created yet");
                             } else if (snapshot.value["start"] == false) {
-                              dialog(
+                              dialog(context,
                                   "Room ID $inputRoomId has not started yet. You cannot join as spectator. But you can join it.");
                             } else {
                               roomId = inputRoomId;
@@ -168,11 +135,22 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
                                   .onValue
                                   .listen((event) {
                                 fen = event.snapshot.value['fen'];
+                                var isGameOverDb =
+                                    event.snapshot.value['gameover'];
+                                var endgameMessengeDb =
+                                    event.snapshot.value['endgame_status'];
                                 Future.delayed(const Duration(seconds: 1))
                                     .then((value) {
                                   controller.game.load(fen);
                                   controller.refreshBoard();
                                 });
+                                if (isGameOverDb) {
+                                  dialog(context, endgameMessengeDb);
+                                  setState(() {
+                                    isGameOver = true;
+                                    endgameMessenge = endgameMessengeDb;
+                                  });
+                                }
                               });
                               setState(() {
                                 player1 = snapshot.value['name_1'];
@@ -208,75 +186,77 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
           Padding(
             padding: const EdgeInsets.only(top: 10.0, bottom: 10.0),
             child: Text(
-              "Room ID: $roomId",
+              (isGameOver ? endgameMessenge : "Room ID: $roomId"),
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(
-                left: 20.0, right: 20.0, bottom: 5.0, top: 5.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                BlackKing(
-                  size: MediaQuery.of(context).size.width * 0.1,
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Text((createWhite ? player2 : player1),
-                      style: TextStyle(
-                          fontSize: 20.0, fontWeight: FontWeight.bold)),
-                ),
-              ],
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
           Expanded(
-            child: Center(
-              child: ChessBoard(
-                size: MediaQuery.of(context).size.width * 0.9,
-                onDraw: () {
-                  showAlertDialog(context, "Draw");
-                },
-                onCheckMate: (loser) {
-                  if (loser == PieceColor.Black) {
-                    showAlertDialog(context, "Checkmate. White wins");
-                  } else {
-                    showAlertDialog(context, "Checkmate. Black wins");
-                  }
-                },
-                onMove: (move) {
-                  print("Hello Bitch!");
-                },
-                onCheck: (color) {},
-                chessBoardController: controller,
-                enableUserMoves: false,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20.0),
-            child: Row(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                WhiteKing(
-                  size: MediaQuery.of(context).size.width * 0.1,
+                Padding(
+                  padding: const EdgeInsets.only(left: 20.0),
+                  child: Row(
+                    children: [
+                      Image.asset(
+                        (createWhite
+                            ? "assets/images/garry_kasparov.jpg"
+                            : "assets/images/magnus_carlsen.jpeg"),
+                        width: 70,
+                        height: 70,
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Text((createWhite ? player2 : player1),
+                              style: TextStyle(
+                                  fontSize: 20.0, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Center(
+                  child: ChessBoard(
+                    size: (MediaQuery.of(context).size.height > 700
+                        ? MediaQuery.of(context).size.width
+                        : MediaQuery.of(context).size.width * 0.9),
+                    onDraw: () {},
+                    onCheckMate: (loser) {},
+                    onMove: (move) {},
+                    onCheck: (color) {},
+                    chessBoardController: controller,
+                    boardType: BoardType.darkBrown,
+                    enableUserMoves: false,
+                  ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Text((createWhite ? player1 : player2),
-                      style: TextStyle(
-                          fontSize: 20.0, fontWeight: FontWeight.bold)),
+                  padding: const EdgeInsets.only(left: 20.0),
+                  child: Row(
+                    children: [
+                      Image.asset(
+                        (createWhite
+                            ? "assets/images/magnus_carlsen.jpeg"
+                            : "assets/images/garry_kasparov.jpg"),
+                        width: 70,
+                        height: 70,
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Text((createWhite ? player1 : player2),
+                              style: TextStyle(
+                                  fontSize: 20.0, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
         ],
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
       ),
     );
   }
@@ -284,17 +264,13 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Text("Watch Chess Room"),
+        centerTitle: true,
       ),
       body: Container(
         child: Container(
-          width: double.maxFinite,
-          decoration: BoxDecoration(
-              gradient: LinearGradient(begin: Alignment.bottomCenter, colors: [
-            Colors.white.withOpacity(0.6),
-            Colors.white.withOpacity(0.5)
-          ])),
           child: (screen == 0 ? formRoomID() : chessBoard()),
         ),
       ),

@@ -50,18 +50,22 @@ class _PieceDetailPageState extends State<PieceDetailPage> {
     var clear = pieces[widget.position].clear;
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         leading: InkWell(
           child: Icon(
             Icons.arrow_back_ios,
-            color: Colors.black,
+            color: Colors.white,
           ),
           onTap: () {
             Navigator.of(context).pop();
           },
         ),
-        backgroundColor: Colors.white,
+        title: Text(
+          pieces[widget.position].name,
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.black,
         elevation: 0.0,
       ),
       body: SafeArea(
@@ -104,7 +108,7 @@ class _PieceDetailPageState extends State<PieceDetailPage> {
   // Content Widget
   Widget _buildContent() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 32.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 16.0),
       child: Text(
         pieces[widget.position].information,
         style: TextStyle(fontSize: 20.0),

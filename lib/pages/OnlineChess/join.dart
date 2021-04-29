@@ -25,6 +25,7 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
   bool isGameOver = false;
   bool isWhite = false;
   String endgameMessenge = "";
+  bool quit = false;
 
   final TextStyle _errorStyle = TextStyle(
     color: Colors.red,
@@ -39,6 +40,7 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
     fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     isGameOver = false;
     endgameMessenge = "";
+    quit = false;
   }
 
   void dialog(BuildContext context, String messenge) {
@@ -76,6 +78,7 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                       child: TextFormField(
                         controller: _nameController,
                         keyboardType: TextInputType.text,
+                        style: TextStyle(color: Colors.black),
                         maxLines: 2,
                         validator: nameValidator,
                         decoration: InputDecoration(
@@ -85,7 +88,9 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                             contentPadding:
                                 EdgeInsets.symmetric(horizontal: minValue),
                             labelStyle: TextStyle(
-                                fontSize: 16.0, color: Colors.black87)),
+                                fontSize: 16.0,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ),
@@ -101,6 +106,7 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                           horizontal: minValue, vertical: minValue),
                       child: TextFormField(
                         controller: _roomIdController,
+                        style: TextStyle(color: Colors.black),
                         keyboardType: TextInputType.text,
                         maxLines: 2,
                         validator: roomIdValidator,
@@ -111,7 +117,10 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                             contentPadding:
                                 EdgeInsets.symmetric(horizontal: minValue),
                             labelStyle: TextStyle(
-                                fontSize: 16.0, color: Colors.black87)),
+                              fontSize: 16.0,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.bold,
+                            )),
                       ),
                     ),
                   ),
@@ -137,7 +146,9 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                               .child("$inputRoomId")
                               .once()
                               .then((snapshot) {
-                            if (snapshot.value == null) {
+                            if (snapshot.value == null ||
+                                (snapshot.value["start"] == true ||
+                                    snapshot.value["gameover"] == true)) {
                               dialog(context,
                                   "Room ID $inputRoomId has not been created yet");
                             } else if (snapshot.value["start"] == true) {
@@ -161,12 +172,23 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                                   .listen((event) {
                                 fen = event.snapshot.value['fen'];
                                 turn = event.snapshot.value['turn'];
+                                var isGameoverDb =
+                                    event.snapshot.value['gameover'];
+                                var endgameMessengeDb =
+                                    event.snapshot.value['endgame_status'];
                                 Future.delayed(
                                         const Duration(milliseconds: 200))
                                     .then((value) {
                                   controller.game.load(fen);
                                   controller.refreshBoard();
                                 });
+                                if (isGameoverDb && !isGameOver && !quit) {
+                                  dialog(context, endgameMessengeDb);
+                                  setState(() {
+                                    isGameOver = true;
+                                    endgameMessenge = endgameMessengeDb;
+                                  });
+                                }
                               });
                               setState(() {
                                 player1 = snapshot.value["name_1"];
@@ -200,145 +222,240 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 10.0, bottom: 10.0),
+            padding: const EdgeInsets.only(top: 5.0, bottom: 5.0),
             child: Text(
               (isGameOver ? endgameMessenge : "Room ID: $roomId"),
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(
-                left: 20.0, right: 20.0, bottom: 5.0, top: 5.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                (isWhite
-                    ? BlackKing(
-                        size: MediaQuery.of(context).size.width * 0.1,
-                      )
-                    : WhiteKing(
-                        size: MediaQuery.of(context).size.width * 0.1,
-                      )),
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Text(player1,
-                      style: TextStyle(
-                          fontSize: 20.0, fontWeight: FontWeight.bold)),
-                ),
-              ],
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
           Expanded(
-            child: Center(
-              child: ChessBoard(
-                size: MediaQuery.of(context).size.width * 0.9,
-                onDraw: () {
-                  if (isGameOver) return;
-                  dialog(context, "Draw");
-                  Future.delayed(const Duration(milliseconds: 1500))
-                      .then((value) {
-                    setState(() {
-                      endgameMessenge = "Draw !!!!";
-                      isGameOver = true;
-                      Future.delayed(const Duration(milliseconds: 500))
-                          .then((value) {
-                        controller.game.load(fen);
-                        controller.refreshBoard();
-                      });
-                    });
-                  });
-                },
-                onCheckMate: (loser) {
-                  if (isGameOver) return;
-                  if (loser == PieceColor.Black) {
-                    dialog(context, "Checkmate. White wins");
-                  } else {
-                    dialog(context, "Checkmate. Black wins");
-                  }
-                  Future.delayed(const Duration(milliseconds: 1500))
-                      .then((value) {
-                    setState(() {
-                      endgameMessenge = (loser == PieceColor.Black
-                          ? "Checkmate. White wins."
-                          : "Checkmate. Black wins");
-                      isGameOver = true;
-                      Future.delayed(const Duration(milliseconds: 500))
-                          .then((value) {
-                        controller.game.load(fen);
-                        controller.refreshBoard();
-                      });
-                    });
-                  });
-                },
-                onMove: (move) {
-                  if ((turn == "white" && !isWhite) ||
-                      (turn == "black" && isWhite)) {
-                    controller.game.load(fen);
-                    controller.refreshBoard();
-                  }
-                  fen = controller.game.fen;
-                  turn = (isWhite ? "black" : "white");
-                  databaseReference.child("$roomId").update({
-                    "fen": fen,
-                    "turn": (isWhite ? "black" : "white"),
-                  });
-                },
-                onCheck: (color) {},
-                chessBoardController: controller,
-                enableUserMoves: (isGameOver ? false : true),
-                whiteSideTowardsUser: isWhite,
+              child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 20.0),
+                child: Row(
+                  children: [
+                    Image.asset(
+                      "assets/images/magnus_carlsen.jpeg",
+                      width: 70,
+                      height: 70,
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Text(player1,
+                            style: TextStyle(
+                                fontSize: 20.0, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
+              Center(
+                child: ChessBoard(
+                  size: (MediaQuery.of(context).size.height > 700
+                      ? MediaQuery.of(context).size.width
+                      : MediaQuery.of(context).size.width * 0.9),
+                  onDraw: () {
+                    if (isGameOver) return;
+                    dialog(context, "Draw");
+                    Future.delayed(const Duration(milliseconds: 1500))
+                        .then((value) {
+                      databaseReference.child("$roomId").update({
+                        "gameover": true,
+                        "endgame_status": 'Draw !!!!',
+                      });
+                      setState(() {
+                        endgameMessenge = "Draw !!!!";
+                        isGameOver = true;
+                      });
+                    });
+                  },
+                  onCheckMate: (loser) {
+                    if (isGameOver) return;
+                    if (loser == PieceColor.Black) {
+                      dialog(context, "Checkmate. White wins");
+                    } else {
+                      dialog(context, "Checkmate. Black wins");
+                    }
+                    Future.delayed(const Duration(milliseconds: 1500))
+                        .then((value) {
+                      databaseReference.child("$roomId").update({
+                        "gameover": true,
+                        "endgame_status": (loser == PieceColor.Black
+                            ? "Checkmate. White wins."
+                            : "Checkmate. Black wins"),
+                      });
+                      setState(() {
+                        endgameMessenge = (loser == PieceColor.Black
+                            ? "Checkmate. White wins."
+                            : "Checkmate. Black wins");
+                        isGameOver = true;
+                      });
+                    });
+                  },
+                  onMove: (move) {
+                    if ((turn == "white" && !isWhite) ||
+                        (turn == "black" && isWhite)) {
+                      controller.game.load(fen);
+                      controller.refreshBoard();
+                    }
+                    fen = controller.game.fen;
+                    turn = (isWhite ? "black" : "white");
+                    databaseReference.child("$roomId").update({
+                      "fen": fen,
+                      "turn": (isWhite ? "black" : "white"),
+                    });
+                  },
+                  onCheck: (color) {},
+                  chessBoardController: controller,
+                  enableUserMoves: (isGameOver ? false : true),
+                  whiteSideTowardsUser: isWhite,
+                  boardType: BoardType.darkBrown,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 20.0),
+                child: Row(
+                  children: [
+                    Image.asset(
+                      "assets/images/garry_kasparov.jpg",
+                      width: 70,
+                      height: 70,
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Text(player2,
+                            style: TextStyle(
+                                fontSize: 20.0, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          )),
           Padding(
-            padding: const EdgeInsets.only(bottom: 20.0),
+            padding: const EdgeInsets.only(
+              bottom: 10,
+            ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                (isWhite
-                    ? WhiteKing(
-                        size: MediaQuery.of(context).size.width * 0.1,
-                      )
-                    : BlackKing(
-                        size: MediaQuery.of(context).size.width * 0.1,
-                      )),
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Text(player2,
-                      style: TextStyle(
-                          fontSize: 20.0, fontWeight: FontWeight.bold)),
+                IconButton(
+                  onPressed: () {
+                    if (isGameOver) return;
+                    showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: Text('Resign'),
+                            content: SingleChildScrollView(
+                              child: ListBody(
+                                children: <Widget>[
+                                  Text('Do you really want to resign.'),
+                                ],
+                              ),
+                            ),
+                            actions: <Widget>[
+                              TextButton(
+                                child: Text('No'),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                              TextButton(
+                                child: Text('Yes'),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  databaseReference.child("$roomId").update({
+                                    "gameover": true,
+                                    "endgame_status": (isWhite
+                                        ? "White resigns. Black wins."
+                                        : "Black resigns. White wins"),
+                                  });
+                                  setState(() {
+                                    isGameOver = true;
+                                    endgameMessenge = (isWhite
+                                        ? "White resigns. Black wins."
+                                        : "Black resigns. White wins");
+                                  });
+                                },
+                              ),
+                            ],
+                          );
+                        });
+                  },
+                  icon: Container(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 5.0),
+                      child: Icon(
+                        Icons.emoji_flags,
+                        color: Colors.white,
+                        size: 30.0,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         ],
       ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-      ),
     );
+  }
+
+  Future<bool> _onBackPressed() {
+    return showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: Text(
+                  "Do you really want to quit. You will be counter as loser."),
+              actions: <Widget>[
+                FlatButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("No"),
+                ),
+                FlatButton(
+                  onPressed: () {
+                    quit = true;
+                    databaseReference.child("$roomId").update({
+                      "gameover": true,
+                      "endgame_status": (isWhite
+                          ? "White quits. Black wins!"
+                          : "Black quits. White wins"),
+                    });
+                    Navigator.pop(context);
+                    Navigator.pop(context);
+                  },
+                  child: Text("Yes"),
+                )
+              ],
+            ));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Join Chess Room"),
-      ),
-      body: Container(
-        child: Container(
-          width: double.maxFinite,
-          decoration: BoxDecoration(
-              gradient: LinearGradient(begin: Alignment.bottomCenter, colors: [
-            Colors.white.withOpacity(0.6),
-            Colors.white.withOpacity(0.5)
-          ])),
-          child: (screen == 0 ? formRoomID() : chessBoard()),
+    return WillPopScope(
+        child: Scaffold(
+          resizeToAvoidBottomInset: false,
+          appBar: AppBar(
+            title: Text("Join Chess Room"),
+          ),
+          body: Container(
+            child: Container(
+              child: (screen == 0 ? formRoomID() : chessBoard()),
+            ),
+          ),
         ),
-      ),
-    );
+        onWillPop: (isGameOver || screen == 0
+            ? () {
+                Navigator.pop(context, false);
+                return new Future(() => false);
+              }
+            : _onBackPressed));
   }
 }

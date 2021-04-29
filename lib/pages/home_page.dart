@@ -8,118 +8,77 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  var titleFontSize = 24.0;
-
-  void _changeStatusBarColor() async {
-    // await FlutterStatusbarManager.setHidden(true);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (Theme.of(context).platform == TargetPlatform.android) {
-      _changeStatusBarColor();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
-
     return Scaffold(
+      appBar: PreferredSize(
+          child: AppBar(
+            title: Container(
+              color: Theme.of(context).primaryColor,
+              child: Center(
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/chess_logo.jpg',
+                    width: 200,
+                    height: 200,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          preferredSize: Size.fromHeight(100.0)),
       body: SafeArea(
         child: Center(
           child: ListView(
             children: <Widget>[
               Container(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    Container(
-                      child: Row(
-                        children: <Widget>[
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0, vertical: 36.0),
-                            child: FlutterLogo(
-                              size: 30.0,
-                            ),
-                          ),
-                          Text(
-                            "Chess",
-                            style: TextStyle(fontSize: 30.0),
-                          ),
-                        ],
-                      ),
-                    ),
-                    PopupMenuButton(
-                      itemBuilder: (context) {
-                        return [
-                          PopupMenuItem(
-                            child: Text("About us"),
-                            value: 0,
-                          )
-                        ];
-                      },
-                      onSelected: (value) {
-                        Navigator.pushNamed(context, '/developer_details_page');
-                      },
-                    )
-                  ],
-                ),
-              ),
-              Container(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    SectionTitle("Learn how the pieces move"),
                     SectionCard(
-                        WhitePawn(
-                          size: 80.0,
+                        Image.asset(
+                          'assets/images/learn.jpeg',
+                          width: 100,
+                          height: 100,
                         ),
-                        Text(
-                          "Explore how chess pieces move on a chessboard",
-                          style: TextStyle(fontSize: 18.0),
-                        ), () {
+                        "Learn",
+                        "Explore how chess pieces move on a chessboard", () {
                       Navigator.pushNamed(context, '/pieces_page');
                     }),
-                    SectionTitle("Play vs Computer"),
                     SectionCard(
-                        WhitePawn(
-                          size: 80.0,
+                        Image.asset(
+                          'assets/images/computer.jpg',
+                          width: 100,
+                          height: 100,
                         ),
-                        Text(
-                          "Play with the computer",
-                          style: TextStyle(fontSize: 18.0),
-                        ), () {
+                        "Computer",
+                        "Play with the computer", () {
                       Navigator.pushNamed(context, '/computer_play');
                     }),
-                    SectionTitle("Offline Play"),
                     SectionCard(
-                        WhitePawn(
-                          size: 80.0,
+                        Image.asset(
+                          'assets/images/offline.jpg',
+                          width: 100,
+                          height: 100,
                         ),
-                        Text(
-                          "Play with friends on the same device",
-                          style: TextStyle(fontSize: 18.0),
-                        ), () {
+                        "Offline Play",
+                        "Play with friends on the same device", () {
                       Navigator.pushNamed(context, '/two_players');
                     }),
-                    SectionTitle("Online Play"),
                     SectionCard(
-                        WhitePawn(
-                          size: 80.0,
+                        Image.asset(
+                          'assets/images/online.png',
+                          width: 100,
+                          height: 100,
                         ),
-                        Text(
-                          "Play with friends on the different device",
-                          style: TextStyle(fontSize: 18.0),
-                        ), () {
+                        "Online Play",
+                        "Play with friends on the different device", () {
                       Navigator.pushNamed(context, '/online_chess');
                     }),
                   ],
                 ),
               ),
-              Container(),
             ],
           ),
         ),
@@ -129,11 +88,12 @@ class _HomePageState extends State<HomePage> {
 }
 
 class SectionCard extends StatelessWidget {
-  final Widget leftWidget;
-  final Widget rightWidget;
+  final Widget logo;
+  final String title;
+  final String description;
   final GestureTapCallback onTap;
 
-  SectionCard(this.leftWidget, this.rightWidget, this.onTap);
+  SectionCard(this.logo, this.title, this.description, this.onTap);
 
   @override
   Widget build(BuildContext context) {
@@ -146,41 +106,39 @@ class SectionCard extends StatelessWidget {
           onTap: onTap,
           splashColor: Colors.blue,
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(4.0),
             child: Row(
               children: <Widget>[
-                Expanded(
-                  flex: 1,
-                  child: leftWidget,
-                ),
+                logo,
                 Expanded(
                   flex: 3,
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: rightWidget,
+                    child: Column(
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(
+                          height: 15.0,
+                        ),
+                        Text(
+                          description,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class SectionTitle extends StatelessWidget {
-  final String text;
-
-  SectionTitle(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
-      child: Text(
-        text,
-        style: TextStyle(fontSize: 24.0, color: Colors.blue),
       ),
     );
   }

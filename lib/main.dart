@@ -20,12 +20,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Chess App',
       theme: new ThemeData(
-        primarySwatch: Colors.blue,
-        fontFamily: Theme.of(context).platform == TargetPlatform.android
-            ? "Raleway"
-            : null,
+        brightness: Brightness.dark,
+        primaryColor: Colors.black,
       ),
       home: SplashScreen(),
       debugShowCheckedModeBanner: false,

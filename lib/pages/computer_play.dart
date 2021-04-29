@@ -3,126 +3,226 @@ import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:chess_app/utils/utils.dart';
 import 'package:chess_vectors_flutter/chess_vectors_flutter.dart';
 
-showAlertDialog(BuildContext context, String result) {
-  // set up the buttons
-  Widget chessButton = TextButton(
-    child: Text("Watch chessboard"),
-    onPressed: () {
-      Navigator.of(context).pop();
-    },
-  );
-  Widget rematchButton = TextButton(
-    child: Text("Rematch"),
-    onPressed: () {
-      Navigator.of(context).pop();
-      Navigator.of(context).pop();
-      Navigator.pushNamed(context, '/computer_play');
-    },
-  );
-
-  // set up the AlertDialog
-  AlertDialog alert = AlertDialog(
-    title: Text("Game Over"),
-    content: Text(result),
-    actions: [
-      chessButton,
-      rematchButton,
-    ],
-  );
-
-  // show the dialog
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return alert;
-    },
-  );
-}
-
 class ComputerPlay extends StatefulWidget {
+  final ChessBoardController controller = new ChessBoardController();
+  String fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  bool isGameOver = false;
+  String endgameResult = '';
+
   @override
   _ComputerPlayState createState() => _ComputerPlayState();
 }
 
 class _ComputerPlayState extends State<ComputerPlay> {
-  String _fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  ChessBoardController controller = new ChessBoardController();
+  String _fen = '';
+  bool isGameOver = false;
+  String endgameResult = '';
 
-  final ChessBoardController controller = new ChessBoardController();
+  void dialog(BuildContext context, String messenge) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text(messenge, style: TextStyle(fontSize: 20)),
+          );
+        });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    controller = widget.controller;
+    _fen = widget.fen;
+    isGameOver = widget.isGameOver;
+    endgameResult = widget.endgameResult;
+  }
 
   @override
   Widget build(BuildContext context) {
+    Future.delayed(const Duration(milliseconds: 200)).then((value) {
+      controller.game.load(_fen);
+      controller.refreshBoard();
+    });
     return Scaffold(
-        appBar: AppBar(
-          title: Text("Play with Computer"),
-        ),
-        body: Container(
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
+      appBar: AppBar(
+        title: Text((isGameOver ? endgameResult : "Play with Computer")),
+        centerTitle: true,
+      ),
+      body: Container(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 20.0),
+              child: Row(
                 children: [
-                  BlackKing(
-                    size: MediaQuery.of(context).size.width * 0.07,
+                  Image.asset(
+                    'assets/images/computer_logo.jpeg',
+                    width: 100,
+                    height: 100,
                   ),
                   Padding(
                     padding: const EdgeInsets.all(20.0),
-                    child: Text("Computer",
+                    child: Text("Alpha Zero",
                         style: TextStyle(
                             fontSize: 20.0, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
-              Expanded(
-                child: Center(
-                  child: ChessBoard(
-                    size: MediaQuery.of(context).size.width * 0.9,
-                    onDraw: () {
-                      showAlertDialog(context, "Draw");
-                    },
-                    onCheckMate: (loser) {
-                      if (loser == PieceColor.Black) {
-                        showAlertDialog(context, "Checkmate. White wins");
-                      } else {
-                        showAlertDialog(context, "Checkmate. Black wins");
-                      }
-                    },
-                    onMove: (move) {
-                      String _fen = controller.game.fen;
+            ),
+            Expanded(
+              child: Center(
+                child: ChessBoard(
+                  size: MediaQuery.of(context).size.width,
+                  onDraw: () {
+                    if (isGameOver) return;
+                    dialog(context, "Draw");
+                    setState(() {
+                      isGameOver = true;
+                      endgameResult = "Draw.";
+                    });
+                  },
+                  onCheckMate: (loser) {
+                    if (isGameOver) return;
+                    dialog(
+                        context,
+                        (loser == PieceColor.Black
+                            ? "Checkmate. White wins"
+                            : "Checkmate. Black wins"));
+                    setState(() {
+                      isGameOver = true;
+                      endgameResult =
+                          (loser == PieceColor.Black ? "Win" : "Lose");
+                    });
+                  },
+                  onMove: (move) {
+                    _fen = controller.game.fen;
+                    final nextMove = getRandomMove(_fen);
+                    if (nextMove != null) {
+                      _fen = makeMove(_fen, nextMove);
                       Future.delayed(Duration(milliseconds: 300)).then((_) {
-                        final nextMove = getRandomMove(_fen);
-                        if (nextMove != null) {
-                          controller.game.load(makeMove(_fen, nextMove));
-                          controller.refreshBoard();
-                        }
+                        controller.game.load(_fen);
+                        controller.refreshBoard();
                       });
-                    },
-                    onCheck: (color) {},
-                    chessBoardController: controller,
-                    enableUserMoves: true,
-                  ),
+                    }
+                  },
+                  onCheck: (color) {},
+                  chessBoardController: controller,
+                  enableUserMoves: (isGameOver ? false : true),
+                  boardType: BoardType.darkBrown,
                 ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(
+                bottom: 10,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  WhiteKing(
-                    size: MediaQuery.of(context).size.width * 0.07,
+                  IconButton(
+                    onPressed: () {
+                      if (isGameOver) return;
+                      showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: Text('Resign'),
+                              content: SingleChildScrollView(
+                                child: ListBody(
+                                  children: <Widget>[
+                                    Text('Do you really want to resign.'),
+                                  ],
+                                ),
+                              ),
+                              actions: <Widget>[
+                                TextButton(
+                                  child: Text('No'),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                                TextButton(
+                                  child: Text('Yes'),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                    setState(() {
+                                      isGameOver = true;
+                                      endgameResult = "Lose";
+                                    });
+                                  },
+                                ),
+                              ],
+                            );
+                          });
+                    },
+                    icon: Container(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 5.0),
+                        child: Icon(
+                          Icons.emoji_flags,
+                          color: Colors.white,
+                          size: 40.0,
+                        ),
+                      ),
+                    ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Text("You",
-                        style: TextStyle(
-                            fontSize: 20.0, fontWeight: FontWeight.bold)),
-                  ),
+                  IconButton(
+                    onPressed: () {
+                      if (isGameOver) return;
+                      showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: Text('New game'),
+                              content: SingleChildScrollView(
+                                child: ListBody(
+                                  children: <Widget>[
+                                    Text(
+                                        'Do you really want to restart a new game.'),
+                                  ],
+                                ),
+                              ),
+                              actions: <Widget>[
+                                TextButton(
+                                  child: Text('No'),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                                TextButton(
+                                  child: Text('Yes'),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                    setState(() {
+                                      _fen =
+                                          'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+                                      isGameOver = false;
+                                      endgameResult = "";
+                                    });
+                                  },
+                                ),
+                              ],
+                            );
+                          });
+                    },
+                    icon: Container(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 5.0),
+                        child: Icon(
+                          Icons.autorenew,
+                          color: Colors.white,
+                          size: 40.0,
+                        ),
+                      ),
+                    ),
+                  )
                 ],
               ),
-            ],
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white,
-          ),
-        ));
+            )
+          ],
+        ),
+      ),
+    );
   }
 }

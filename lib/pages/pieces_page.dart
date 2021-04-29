@@ -20,6 +20,7 @@ class _PiecesPageState extends State<PiecesPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text("Chess Basics"),
+        centerTitle: true,
       ),
       body: Center(
         child: ListView.builder(
@@ -32,7 +33,7 @@ class _PiecesPageState extends State<PiecesPage> {
               leftWidget: widget,
               rightWidget: Text(
                 name,
-                style: TextStyle(fontSize: 16.0),
+                style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
               ),
               onTap: () {
                 Navigator.push(
@@ -75,18 +76,7 @@ class PieceCard extends StatelessWidget {
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: <Widget>[
-                Expanded(
-                  flex: 1,
-                  child: Center(
-                    child: Material(
-                      child: Hero(
-                        child: leftWidget,
-                        tag: heroTag,
-                      ),
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
+                leftWidget,
                 Expanded(
                   flex: 3,
                   child: Padding(
