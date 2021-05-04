@@ -1,53 +1,149 @@
+import 'package:chess_app/redux/actions.dart';
+import 'package:chess_app/redux/data.dart';
+import 'package:chess_app/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:chess_app/utils/utils.dart';
-import 'package:chess_vectors_flutter/chess_vectors_flutter.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+import 'package:redux/redux.dart';
+import 'package:audioplayers/audio_cache.dart';
+
+// Computer data format taken from the redux store
+class _ComputerData {
+  final String fen;
+  final bool isGameOver;
+  final Function(String, String) onUpdateEndgameMessenge;
+  final Function() onRestart;
+  final Function(String) onUpdateNewFen;
+
+  _ComputerData({
+    this.fen,
+    this.isGameOver,
+    this.onUpdateEndgameMessenge,
+    this.onRestart,
+    this.onUpdateNewFen,
+  });
+
+  factory _ComputerData.create(Store<AppState> store) {
+    _onUpdateEndgameMessenge(String fen, String messenge) {
+      store.dispatch(ComputerEndgameAction(
+        endgameMessenge: messenge,
+        fen: fen,
+      ));
+    }
+
+    _onRestart() {
+      store.dispatch(ComputerRestartAction());
+    }
+
+    _onUpdateNewFen(String newFen) {
+      store.dispatch(ComputerUpdateFen(newFen));
+    }
+
+    return _ComputerData(
+      fen: store.state.computerPlay.fen,
+      isGameOver: store.state.computerPlay.isGameOver,
+      onUpdateEndgameMessenge: _onUpdateEndgameMessenge,
+      onRestart: _onRestart,
+      onUpdateNewFen: _onUpdateNewFen,
+    );
+  }
+}
 
 class ComputerPlay extends StatefulWidget {
-  final ChessBoardController controller = new ChessBoardController();
-  String fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-  bool isGameOver = false;
-  String endgameResult = '';
-
   @override
   _ComputerPlayState createState() => _ComputerPlayState();
 }
 
 class _ComputerPlayState extends State<ComputerPlay> {
+  // constants
   ChessBoardController controller = new ChessBoardController();
-  String _fen = '';
-  bool isGameOver = false;
-  String endgameResult = '';
+  String _fen;
+  final player = AudioCache(prefix: 'assets/sound/');
 
-  void dialog(BuildContext context, String messenge) {
-    showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text(messenge, style: TextStyle(fontSize: 20)),
-          );
-        });
-  }
-
+  // initialize variables
   @override
   void initState() {
     super.initState();
-    controller = widget.controller;
-    _fen = widget.fen;
-    isGameOver = widget.isGameOver;
-    endgameResult = widget.endgameResult;
+    player.loadAll([
+      'check_sound.mp3',
+      'gameover_sound.mp3',
+      'move_sound.mp3',
+      'start_sound.mp3',
+    ]);
+    player.play('start_sound.mp3', volume: 20.0);
+  }
+
+  // onDraw function
+  void _onDrawCallback(_ComputerData data) {
+    if (data.isGameOver) return;
+
+    player.play("gameover_sound.mp3", volume: 20.0);
+    dialog(context, "Draw");
+    data.onUpdateEndgameMessenge(_fen, "Draw!!!");
+  }
+
+  // onCheckmate function
+  void _onCheckmateCallback(PieceColor loser, _ComputerData data) {
+    if (data.isGameOver) return;
+
+    player.play("gameover_sound.mp3", volume: 20.0);
+    dialog(
+      context,
+      (loser == PieceColor.Black
+          ? "Checkmate. White wins"
+          : "Checkmate. Black wins"),
+    );
+    data.onUpdateEndgameMessenge(
+      _fen,
+      (loser == PieceColor.Black ? "Win" : "Lose"),
+    );
+  }
+
+  // onMove function
+  Null _onMoveCallback(String move) {
+    player.play("move_sound.mp3", volume: 5.0);
+    _fen = controller.game.fen;
+    final nextMove = getRandomMove(_fen);
+    if (nextMove != null) {
+      _fen = makeMove(_fen, nextMove);
+      Future.delayed(Duration(milliseconds: 300)).then((_) {
+        controller.game.load(_fen);
+        controller.refreshBoard();
+      });
+    }
+  }
+
+  // onCheck function
+  Null _onCheck(PieceColor color) {
+    player.disableLog();
+    player.play("check_sound.mp3", volume: 20.0);
   }
 
   @override
   Widget build(BuildContext context) {
-    Future.delayed(const Duration(milliseconds: 200)).then((value) {
-      controller.game.load(_fen);
-      controller.refreshBoard();
-    });
     return Scaffold(
       appBar: AppBar(
-        title: Text((isGameOver ? endgameResult : "Play with Computer")),
+        title: StoreConnector<AppState, ComputerPlayState>(
+          converter: (store) => store.state.computerPlay,
+          builder: (context, ComputerPlayState state) => Text(
+            (state.isGameOver ? state.endgameResult : "Play with Computer"),
+          ),
+        ),
         centerTitle: true,
+        leading: StoreConnector<AppState, _ComputerData>(
+          converter: (store) => _ComputerData.create(store),
+          builder: (context, _ComputerData data) => IconButton(
+            icon: new Icon(
+              Icons.arrow_back,
+              size: 30,
+            ),
+            onPressed: () {
+              data.onUpdateNewFen(_fen);
+              Navigator.of(context).pop();
+            },
+          ),
+        ),
       ),
       body: Container(
         child: Column(
@@ -72,154 +168,144 @@ class _ComputerPlayState extends State<ComputerPlay> {
             ),
             Expanded(
               child: Center(
-                child: ChessBoard(
-                  size: MediaQuery.of(context).size.width,
-                  onDraw: () {
-                    if (isGameOver) return;
-                    dialog(context, "Draw");
-                    setState(() {
-                      isGameOver = true;
-                      endgameResult = "Draw.";
-                    });
-                  },
-                  onCheckMate: (loser) {
-                    if (isGameOver) return;
-                    dialog(
-                        context,
-                        (loser == PieceColor.Black
-                            ? "Checkmate. White wins"
-                            : "Checkmate. Black wins"));
-                    setState(() {
-                      isGameOver = true;
-                      endgameResult =
-                          (loser == PieceColor.Black ? "Win" : "Lose");
-                    });
-                  },
-                  onMove: (move) {
-                    _fen = controller.game.fen;
-                    final nextMove = getRandomMove(_fen);
-                    if (nextMove != null) {
-                      _fen = makeMove(_fen, nextMove);
-                      Future.delayed(Duration(milliseconds: 300)).then((_) {
-                        controller.game.load(_fen);
+                child: StoreConnector<AppState, _ComputerData>(
+                    converter: (store) => _ComputerData.create(store),
+                    builder: (context, _ComputerData data) {
+                      // update board everytime the widget is rebuilt
+                      Future.delayed(const Duration(microseconds: 300))
+                          .then((value) {
+                        controller.game.load(data.fen);
                         controller.refreshBoard();
                       });
-                    }
-                  },
-                  onCheck: (color) {},
-                  chessBoardController: controller,
-                  enableUserMoves: (isGameOver ? false : true),
-                  boardType: BoardType.darkBrown,
-                ),
+                      _fen = data.fen;
+
+                      return ChessBoard(
+                        size: MediaQuery.of(context).size.width,
+                        onDraw: () {
+                          _onDrawCallback(data);
+                        },
+                        onCheckMate: (loser) {
+                          _onCheckmateCallback(loser, data);
+                        },
+                        onMove: _onMoveCallback,
+                        onCheck: _onCheck,
+                        chessBoardController: controller,
+                        enableUserMoves: (data.isGameOver ? false : true),
+                        boardType: BoardType.darkBrown,
+                      );
+                    }),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(
-                bottom: 10,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      if (isGameOver) return;
-                      showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: Text('Resign'),
-                              content: SingleChildScrollView(
-                                child: ListBody(
-                                  children: <Widget>[
-                                    Text('Do you really want to resign.'),
-                                  ],
+            StoreConnector<AppState, _ComputerData>(
+              builder: (context, _ComputerData data) => Padding(
+                padding: const EdgeInsets.only(
+                  bottom: 10,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        if (data.isGameOver) return;
+                        showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: Text('Resign'),
+                                content: SingleChildScrollView(
+                                  child: ListBody(
+                                    children: <Widget>[
+                                      Text('Do you really want to resign.'),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              actions: <Widget>[
-                                TextButton(
-                                  child: Text('No'),
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                ),
-                                TextButton(
-                                  child: Text('Yes'),
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                    setState(() {
-                                      isGameOver = true;
-                                      endgameResult = "Lose";
-                                    });
-                                  },
-                                ),
-                              ],
-                            );
-                          });
-                    },
-                    icon: Container(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 5.0),
-                        child: Icon(
-                          Icons.emoji_flags,
-                          color: Colors.white,
-                          size: 40.0,
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: Text('No'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                  ),
+                                  TextButton(
+                                    child: Text('Yes'),
+                                    onPressed: () {
+                                      // resign
+                                      player.play("gameover_sound.mp3",
+                                          volume: 20.0);
+                                      Navigator.of(context).pop();
+                                      data.onUpdateEndgameMessenge(
+                                        _fen,
+                                        "Lose",
+                                      );
+                                    },
+                                  ),
+                                ],
+                              );
+                            });
+                      },
+                      icon: Container(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 5.0),
+                          child: Icon(
+                            Icons.emoji_flags,
+                            color: Colors.white,
+                            size: 40.0,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      if (isGameOver) return;
-                      showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: Text('New game'),
-                              content: SingleChildScrollView(
-                                child: ListBody(
-                                  children: <Widget>[
-                                    Text(
-                                        'Do you really want to restart a new game.'),
-                                  ],
+                    IconButton(
+                      onPressed: () {
+                        showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: Text('New game'),
+                                content: SingleChildScrollView(
+                                  child: ListBody(
+                                    children: <Widget>[
+                                      Text(
+                                          'Do you really want to restart a new game.'),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              actions: <Widget>[
-                                TextButton(
-                                  child: Text('No'),
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                ),
-                                TextButton(
-                                  child: Text('Yes'),
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                    setState(() {
-                                      _fen =
-                                          'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-                                      isGameOver = false;
-                                      endgameResult = "";
-                                    });
-                                  },
-                                ),
-                              ],
-                            );
-                          });
-                    },
-                    icon: Container(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 5.0),
-                        child: Icon(
-                          Icons.autorenew,
-                          color: Colors.white,
-                          size: 40.0,
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: Text('No'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                  ),
+                                  TextButton(
+                                    child: Text('Yes'),
+                                    onPressed: () {
+                                      // restart
+                                      player.play("start_sound.mp3",
+                                          volume: 20.0);
+                                      Navigator.of(context).pop();
+                                      data.onRestart();
+                                    },
+                                  ),
+                                ],
+                              );
+                            });
+                      },
+                      icon: Container(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 5.0),
+                          child: Icon(
+                            Icons.autorenew,
+                            color: Colors.white,
+                            size: 40.0,
+                          ),
                         ),
                       ),
-                    ),
-                  )
-                ],
+                    )
+                  ],
+                ),
               ),
-            )
+              converter: (store) => _ComputerData.create(store),
+            ),
           ],
         ),
       ),

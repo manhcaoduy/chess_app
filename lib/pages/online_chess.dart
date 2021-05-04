@@ -1,7 +1,5 @@
-import 'package:chess_vectors_flutter/chess_vectors_flutter.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:chess_app/pages/home_page.dart';
+import 'package:chess_app/widget/section_card.dart';
 
 class OnlineMainScreen extends StatefulWidget {
   @override
@@ -9,20 +7,6 @@ class OnlineMainScreen extends StatefulWidget {
 }
 
 class _OnlineMainScreenState extends State<OnlineMainScreen> {
-  var titleFontSize = 24.0;
-
-  void _changeStatusBarColor() async {
-    // await FlutterStatusbarManager.setHidden(true);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (Theme.of(context).platform == TargetPlatform.android) {
-      _changeStatusBarColor();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

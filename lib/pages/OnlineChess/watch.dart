@@ -1,9 +1,11 @@
+import 'package:audioplayers/audio_cache.dart';
+import 'package:chess_app/widget/circle_status.dart';
+import 'package:chess_app/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:chess_app/widget/validator.dart';
+import 'package:chess_app/utils/validator.dart';
 import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:chess_vectors_flutter/chess_vectors_flutter.dart';
 
 class OnlineWatchScreen extends StatefulWidget {
   @override
@@ -11,8 +13,13 @@ class OnlineWatchScreen extends StatefulWidget {
 }
 
 class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
+  // constants
+  final databaseReference = FirebaseDatabase.instance.reference();
   final TextEditingController _roomIdController = TextEditingController();
   final ChessBoardController controller = new ChessBoardController();
+  GlobalKey<CircleStatusState> circle1GlobalKey = GlobalKey();
+  GlobalKey<CircleStatusState> circle2GlobalKey = GlobalKey();
+  final player = AudioCache(prefix: 'assets/sound/');
   final double minValue = 8.0;
   final _formKey = GlobalKey<FormState>();
   String roomId = "";
@@ -25,13 +32,6 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
   bool isGameOver = false;
   String endgameMessenge = '';
 
-  int experienceIndex = 0;
-
-  final TextStyle _errorStyle = TextStyle(
-    color: Colors.red,
-    fontSize: 16.6,
-  );
-
   @override
   void initState() {
     super.initState();
@@ -43,14 +43,84 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
     createWhite = true;
   }
 
-  void dialog(BuildContext context, String messenge) {
-    showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text(messenge, style: TextStyle(fontSize: 20)),
-          );
-        });
+  // --------------------------------------------- form ---------------------------------------------------
+  final TextStyle _errorStyle = TextStyle(
+    color: Colors.red,
+    fontSize: 16.6,
+  );
+
+  void _onForm() {
+    if (_formKey.currentState.validate()) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Processing Room ID')));
+      var inputRoomId = _roomIdController.text;
+      databaseReference.child("$inputRoomId").once().then((snapshot) {
+        if (snapshot.value == null) {
+          dialog(context, "Room ID $inputRoomId has not been created yet");
+        } else if (snapshot.value["start"] == false) {
+          dialog(context,
+              "Room ID $inputRoomId has not started yet. You cannot join as spectator. But you can join it.");
+        } else {
+          roomId = inputRoomId;
+          Future.delayed(const Duration(seconds: 1)).then((value) {
+            controller.game.load(snapshot.value["fen"]);
+            controller.refreshBoard();
+          });
+          FirebaseDatabase.instance
+              .reference()
+              .child("$roomId")
+              .onValue
+              .listen((event) {
+            fen = event.snapshot.value['fen'];
+            var isGameOverDb = event.snapshot.value['gameover'];
+            var endgameMessengeDb = event.snapshot.value['endgame_status'];
+            player.play("move_sound.mp3", volume: 5.0);
+            if (screen == 1) {
+              if (isGameOverDb) {
+                circle1GlobalKey.currentState.changeTurn(0);
+                circle2GlobalKey.currentState.changeTurn(0);
+              } else {
+                if (turn == 'white') {
+                  circle1GlobalKey.currentState.changeTurn(1);
+                  circle2GlobalKey.currentState.changeTurn(0);
+                } else {
+                  circle1GlobalKey.currentState.changeTurn(0);
+                  circle2GlobalKey.currentState.changeTurn(1);
+                }
+              }
+            }
+
+            Future.delayed(const Duration(seconds: 1)).then((value) {
+              controller.game.load(fen);
+              controller.refreshBoard();
+            });
+            if (isGameOverDb) {
+              dialog(context, endgameMessengeDb);
+              setState(() {
+                isGameOver = true;
+                endgameMessenge = endgameMessengeDb;
+              });
+            }
+          });
+          player.play("start_sound.mp3", volume: 20.0);
+          Future.delayed(const Duration(milliseconds: 200)).then((value) {
+            if (turn == 'white') {
+              circle1GlobalKey.currentState.changeTurn(1);
+              circle2GlobalKey.currentState.changeTurn(0);
+            } else {
+              circle1GlobalKey.currentState.changeTurn(0);
+              circle2GlobalKey.currentState.changeTurn(1);
+            }
+          });
+          setState(() {
+            player1 = snapshot.value['name_1'];
+            player2 = snapshot.value['name_2'];
+            createWhite = snapshot.value['create_white'];
+            screen = 1;
+          });
+        }
+      });
+    }
   }
 
   Widget formRoomID() {
@@ -107,61 +177,7 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
                           colors: [Colors.pink[700], Colors.pink[400]]),
                     ),
                     child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState.validate()) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Processing Room ID')));
-                          var inputRoomId = _roomIdController.text;
-                          databaseReference
-                              .child("$inputRoomId")
-                              .once()
-                              .then((snapshot) {
-                            if (snapshot.value == null) {
-                              dialog(context,
-                                  "Room ID $inputRoomId has not been created yet");
-                            } else if (snapshot.value["start"] == false) {
-                              dialog(context,
-                                  "Room ID $inputRoomId has not started yet. You cannot join as spectator. But you can join it.");
-                            } else {
-                              roomId = inputRoomId;
-                              Future.delayed(const Duration(seconds: 1))
-                                  .then((value) {
-                                controller.game.load(snapshot.value["fen"]);
-                                controller.refreshBoard();
-                              });
-                              FirebaseDatabase.instance
-                                  .reference()
-                                  .child("$roomId")
-                                  .onValue
-                                  .listen((event) {
-                                fen = event.snapshot.value['fen'];
-                                var isGameOverDb =
-                                    event.snapshot.value['gameover'];
-                                var endgameMessengeDb =
-                                    event.snapshot.value['endgame_status'];
-                                Future.delayed(const Duration(seconds: 1))
-                                    .then((value) {
-                                  controller.game.load(fen);
-                                  controller.refreshBoard();
-                                });
-                                if (isGameOverDb) {
-                                  dialog(context, endgameMessengeDb);
-                                  setState(() {
-                                    isGameOver = true;
-                                    endgameMessenge = endgameMessengeDb;
-                                  });
-                                }
-                              });
-                              setState(() {
-                                player1 = snapshot.value['name_1'];
-                                player2 = snapshot.value['name_2'];
-                                createWhite = snapshot.value['create_white'];
-                                screen = 1;
-                              });
-                            }
-                          });
-                        }
-                      },
+                      onPressed: _onForm,
                       style: ElevatedButton.styleFrom(
                         padding: EdgeInsets.symmetric(vertical: minValue * 2.4),
                         elevation: 0.0,
@@ -178,6 +194,8 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
       ],
     );
   }
+
+  // ------------------------------------------ chessboard --------------------------------------
 
   Widget chessBoard() {
     return Container(
@@ -196,7 +214,10 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(left: 20.0),
+                  padding: const EdgeInsets.only(
+                    left: 20.0,
+                    right: 20.0,
+                  ),
                   child: Row(
                     children: [
                       Image.asset(
@@ -214,6 +235,7 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
                                   fontSize: 20.0, fontWeight: FontWeight.bold)),
                         ),
                       ),
+                      CircleStatus(key: circle2GlobalKey),
                     ],
                   ),
                 ),
@@ -222,10 +244,17 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
                     size: (MediaQuery.of(context).size.height > 700
                         ? MediaQuery.of(context).size.width
                         : MediaQuery.of(context).size.width * 0.9),
-                    onDraw: () {},
-                    onCheckMate: (loser) {},
+                    onDraw: () {
+                      player.play("gameover_sound.mp3", volume: 20.0);
+                    },
+                    onCheckMate: (loser) {
+                      player.play("gameover_sound.mp3", volume: 20.0);
+                    },
                     onMove: (move) {},
-                    onCheck: (color) {},
+                    onCheck: (color) {
+                      player.disableLog();
+                      player.play("check_sound.mp3", volume: 20.0);
+                    },
                     chessBoardController: controller,
                     boardType: BoardType.darkBrown,
                     enableUserMoves: false,
@@ -250,6 +279,7 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
                                   fontSize: 20.0, fontWeight: FontWeight.bold)),
                         ),
                       ),
+                      CircleStatus(key: circle1GlobalKey),
                     ],
                   ),
                 ),

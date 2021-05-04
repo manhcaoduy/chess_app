@@ -6,7 +6,6 @@ import 'package:flutter_chess_board/flutter_chess_board.dart';
 
 class PieceDetailPage extends StatefulWidget {
   final int position;
-
   PieceDetailPage({@required this.position});
 
   @override

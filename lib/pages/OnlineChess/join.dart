@@ -1,9 +1,11 @@
+import 'package:audioplayers/audio_cache.dart';
+import 'package:chess_app/widget/circle_status.dart';
+import 'package:chess_app/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:chess_app/widget/validator.dart';
+import 'package:chess_app/utils/validator.dart';
 import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:chess_vectors_flutter/chess_vectors_flutter.dart';
 
 class OnlineJoinScreen extends StatefulWidget {
   @override
@@ -11,9 +13,14 @@ class OnlineJoinScreen extends StatefulWidget {
 }
 
 class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
+  // constants
+  final databaseReference = FirebaseDatabase.instance.reference();
   final TextEditingController _roomIdController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final ChessBoardController controller = new ChessBoardController();
+  GlobalKey<CircleStatusState> circle1GlobalKey = GlobalKey();
+  GlobalKey<CircleStatusState> circle2GlobalKey = GlobalKey();
+  final player = AudioCache(prefix: 'assets/sound/');
   final double minValue = 8.0;
   final _formKey = GlobalKey<FormState>();
   String roomId = "";
@@ -27,11 +34,6 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
   String endgameMessenge = "";
   bool quit = false;
 
-  final TextStyle _errorStyle = TextStyle(
-    color: Colors.red,
-    fontSize: 16.6,
-  );
-
   @override
   void initState() {
     super.initState();
@@ -41,16 +43,109 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
     isGameOver = false;
     endgameMessenge = "";
     quit = false;
+    player.loadAll([
+      'check_sound.mp3',
+      'gameover_sound.mp3',
+      'move_sound.mp3',
+      'start_sound.mp3',
+    ]);
   }
 
-  void dialog(BuildContext context, String messenge) {
-    showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text(messenge, style: TextStyle(fontSize: 20)),
-          );
-        });
+  // -------------------------------------------- form ----------------------------------------------
+  // form text error style
+  final TextStyle _errorStyle = TextStyle(
+    color: Colors.red,
+    fontSize: 16.6,
+  );
+
+  void _onForm() {
+    if (_formKey.currentState.validate()) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Processing Room ID')));
+      var inputRoomId = _roomIdController.text;
+      var name = _nameController.text;
+      databaseReference.child("$inputRoomId").once().then((snapshot) {
+        if (snapshot.value == null ||
+            (snapshot.value["start"] == true ||
+                snapshot.value["gameover"] == true)) {
+          dialog(context, "Room ID $inputRoomId has not been created yet");
+        } else if (snapshot.value["start"] == true) {
+          dialog(context,
+              "Room ID $inputRoomId has already started. You cannot join as player. But you can spectate it.");
+        } else {
+          roomId = inputRoomId;
+          databaseReference.child("$roomId").update({
+            "start": true,
+            "name_2": name,
+          });
+          Future.delayed(const Duration(microseconds: 200)).then((value) {
+            controller.game.load(snapshot.value["fen"]);
+            controller.refreshBoard();
+          });
+          FirebaseDatabase.instance
+              .reference()
+              .child("$roomId")
+              .onValue
+              .listen((event) {
+            fen = event.snapshot.value['fen'];
+            turn = event.snapshot.value['turn'];
+            var isGameoverDb = event.snapshot.value['gameover'];
+            var endgameMessengeDb = event.snapshot.value['endgame_status'];
+
+            if (screen == 1) {
+              if (isGameoverDb && !quit) {
+                circle1GlobalKey.currentState.changeTurn(0);
+                circle2GlobalKey.currentState.changeTurn(0);
+              } else {
+                if ((turn == 'white' && isWhite) ||
+                    (turn == 'black' && !isWhite)) {
+                  circle1GlobalKey.currentState.changeTurn(1);
+                  circle2GlobalKey.currentState.changeTurn(0);
+                } else {
+                  circle1GlobalKey.currentState.changeTurn(0);
+                  circle2GlobalKey.currentState.changeTurn(1);
+                }
+              }
+            }
+
+            Future.delayed(const Duration(milliseconds: 200)).then((value) {
+              if (!quit &&
+                  !isGameoverDb &&
+                  fen !=
+                      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
+                player.play("move_sound.mp3", volume: 5);
+              }
+              controller.game.load(fen);
+              controller.refreshBoard();
+            });
+            if (isGameoverDb && !isGameOver && !quit) {
+              player.play("gameover_sound.mp3", volume: 20.0);
+              dialog(context, endgameMessengeDb);
+              setState(() {
+                isGameOver = true;
+                endgameMessenge = endgameMessengeDb;
+              });
+            }
+          });
+          player.play("start_sound.mp3", volume: 20.0);
+          Future.delayed(const Duration(milliseconds: 200)).then((value) {
+            if ((turn == 'white' && isWhite) || (turn == 'black' && !isWhite)) {
+              circle1GlobalKey.currentState.changeTurn(1);
+              circle2GlobalKey.currentState.changeTurn(0);
+            } else {
+              circle1GlobalKey.currentState.changeTurn(0);
+              circle2GlobalKey.currentState.changeTurn(1);
+            }
+          });
+          setState(() {
+            player1 = snapshot.value["name_1"];
+            player2 = name;
+            isWhite = !snapshot.value["create_white"];
+            screen = 1;
+          });
+        }
+      });
+    }
   }
 
   Widget formRoomID() {
@@ -137,68 +232,7 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                     ),
                     child: ElevatedButton(
                       onPressed: () {
-                        if (_formKey.currentState.validate()) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Processing Room ID')));
-                          var inputRoomId = _roomIdController.text;
-                          var name = _nameController.text;
-                          databaseReference
-                              .child("$inputRoomId")
-                              .once()
-                              .then((snapshot) {
-                            if (snapshot.value == null ||
-                                (snapshot.value["start"] == true ||
-                                    snapshot.value["gameover"] == true)) {
-                              dialog(context,
-                                  "Room ID $inputRoomId has not been created yet");
-                            } else if (snapshot.value["start"] == true) {
-                              dialog(context,
-                                  "Room ID $inputRoomId has already started. You cannot join as player. But you can spectate it.");
-                            } else {
-                              roomId = inputRoomId;
-                              databaseReference.child("$roomId").update({
-                                "start": true,
-                                "name_2": name,
-                              });
-                              Future.delayed(const Duration(microseconds: 200))
-                                  .then((value) {
-                                controller.game.load(snapshot.value["fen"]);
-                                controller.refreshBoard();
-                              });
-                              FirebaseDatabase.instance
-                                  .reference()
-                                  .child("$roomId")
-                                  .onValue
-                                  .listen((event) {
-                                fen = event.snapshot.value['fen'];
-                                turn = event.snapshot.value['turn'];
-                                var isGameoverDb =
-                                    event.snapshot.value['gameover'];
-                                var endgameMessengeDb =
-                                    event.snapshot.value['endgame_status'];
-                                Future.delayed(
-                                        const Duration(milliseconds: 200))
-                                    .then((value) {
-                                  controller.game.load(fen);
-                                  controller.refreshBoard();
-                                });
-                                if (isGameoverDb && !isGameOver && !quit) {
-                                  dialog(context, endgameMessengeDb);
-                                  setState(() {
-                                    isGameOver = true;
-                                    endgameMessenge = endgameMessengeDb;
-                                  });
-                                }
-                              });
-                              setState(() {
-                                player1 = snapshot.value["name_1"];
-                                player2 = name;
-                                isWhite = !snapshot.value["create_white"];
-                                screen = 1;
-                              });
-                            }
-                          });
-                        }
+                        _onForm();
                       },
                       style: ElevatedButton.styleFrom(
                         padding: EdgeInsets.symmetric(vertical: minValue * 2.4),
@@ -215,6 +249,83 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
         ),
       ],
     );
+  }
+  // -------------------------------------------------------------------------------------------------------
+
+  // -------------------------------------- Chessboard ---------------------------------------------------
+  void _onDraw() {
+    if (isGameOver) return;
+    player.play("gameover_sound.mp3", volume: 20.0);
+    dialog(context, "Draw");
+    Future.delayed(const Duration(milliseconds: 1500)).then((value) {
+      databaseReference.child("$roomId").update({
+        "gameover": true,
+        "endgame_status": 'Draw !!!!',
+      });
+      setState(() {
+        endgameMessenge = "Draw !!!!";
+        isGameOver = true;
+      });
+    });
+  }
+
+  Null _onCheckmate(PieceColor loser) {
+    if (isGameOver) return;
+    player.play("gameover_sound.mp3", volume: 20.0);
+    dialog(
+        context,
+        (loser == PieceColor.Black
+            ? "Checkmate. White wins"
+            : "Checkmate. Black wins"));
+    Future.delayed(const Duration(milliseconds: 1500)).then((value) {
+      databaseReference.child("$roomId").update({
+        "gameover": true,
+        "endgame_status": (loser == PieceColor.Black
+            ? "Checkmate. White wins."
+            : "Checkmate. Black wins"),
+      });
+      setState(() {
+        endgameMessenge = (loser == PieceColor.Black
+            ? "Checkmate. White wins."
+            : "Checkmate. Black wins");
+        isGameOver = true;
+      });
+    });
+  }
+
+  Null _onMove(String move) {
+    if ((turn == "white" && !isWhite) || (turn == "black" && isWhite)) {
+      controller.game.load(fen);
+      controller.refreshBoard();
+    }
+    fen = controller.game.fen;
+    turn = (isWhite ? "black" : "white");
+    databaseReference.child("$roomId").update({
+      "fen": fen,
+      "turn": (isWhite ? "black" : "white"),
+    });
+  }
+
+  void _onResign() {
+    player.play("gameover_sound.mp3", volume: 20.0);
+    Navigator.of(context).pop();
+    databaseReference.child("$roomId").update({
+      "gameover": true,
+      "endgame_status": (isWhite
+          ? "White resigns. Black wins."
+          : "Black resigns. White wins"),
+    });
+    setState(() {
+      isGameOver = true;
+      endgameMessenge = (isWhite
+          ? "White resigns. Black wins."
+          : "Black resigns. White wins");
+    });
+  }
+
+  Null _onCheck(PieceColor color) {
+    player.disableLog();
+    player.play("check_sound.mp3", volume: 20.0);
   }
 
   Widget chessBoard() {
@@ -234,7 +345,10 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Padding(
-                padding: const EdgeInsets.only(left: 20.0),
+                padding: const EdgeInsets.only(
+                  left: 20.0,
+                  right: 20.0,
+                ),
                 child: Row(
                   children: [
                     Image.asset(
@@ -250,6 +364,7 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                                 fontSize: 20.0, fontWeight: FontWeight.bold)),
                       ),
                     ),
+                    CircleStatus(key: circle2GlobalKey),
                   ],
                 ),
               ),
@@ -258,58 +373,10 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                   size: (MediaQuery.of(context).size.height > 700
                       ? MediaQuery.of(context).size.width
                       : MediaQuery.of(context).size.width * 0.9),
-                  onDraw: () {
-                    if (isGameOver) return;
-                    dialog(context, "Draw");
-                    Future.delayed(const Duration(milliseconds: 1500))
-                        .then((value) {
-                      databaseReference.child("$roomId").update({
-                        "gameover": true,
-                        "endgame_status": 'Draw !!!!',
-                      });
-                      setState(() {
-                        endgameMessenge = "Draw !!!!";
-                        isGameOver = true;
-                      });
-                    });
-                  },
-                  onCheckMate: (loser) {
-                    if (isGameOver) return;
-                    if (loser == PieceColor.Black) {
-                      dialog(context, "Checkmate. White wins");
-                    } else {
-                      dialog(context, "Checkmate. Black wins");
-                    }
-                    Future.delayed(const Duration(milliseconds: 1500))
-                        .then((value) {
-                      databaseReference.child("$roomId").update({
-                        "gameover": true,
-                        "endgame_status": (loser == PieceColor.Black
-                            ? "Checkmate. White wins."
-                            : "Checkmate. Black wins"),
-                      });
-                      setState(() {
-                        endgameMessenge = (loser == PieceColor.Black
-                            ? "Checkmate. White wins."
-                            : "Checkmate. Black wins");
-                        isGameOver = true;
-                      });
-                    });
-                  },
-                  onMove: (move) {
-                    if ((turn == "white" && !isWhite) ||
-                        (turn == "black" && isWhite)) {
-                      controller.game.load(fen);
-                      controller.refreshBoard();
-                    }
-                    fen = controller.game.fen;
-                    turn = (isWhite ? "black" : "white");
-                    databaseReference.child("$roomId").update({
-                      "fen": fen,
-                      "turn": (isWhite ? "black" : "white"),
-                    });
-                  },
-                  onCheck: (color) {},
+                  onDraw: _onDraw,
+                  onCheckMate: _onCheckmate,
+                  onMove: _onMove,
+                  onCheck: _onCheck,
                   chessBoardController: controller,
                   enableUserMoves: (isGameOver ? false : true),
                   whiteSideTowardsUser: isWhite,
@@ -317,7 +384,10 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(left: 20.0),
+                padding: const EdgeInsets.only(
+                  left: 20.0,
+                  right: 20.0,
+                ),
                 child: Row(
                   children: [
                     Image.asset(
@@ -333,6 +403,7 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                                 fontSize: 20.0, fontWeight: FontWeight.bold)),
                       ),
                     ),
+                    CircleStatus(key: circle1GlobalKey),
                   ],
                 ),
               ),
@@ -369,21 +440,7 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                               ),
                               TextButton(
                                 child: Text('Yes'),
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                  databaseReference.child("$roomId").update({
-                                    "gameover": true,
-                                    "endgame_status": (isWhite
-                                        ? "White resigns. Black wins."
-                                        : "Black resigns. White wins"),
-                                  });
-                                  setState(() {
-                                    isGameOver = true;
-                                    endgameMessenge = (isWhite
-                                        ? "White resigns. Black wins."
-                                        : "Black resigns. White wins");
-                                  });
-                                },
+                                onPressed: _onResign,
                               ),
                             ],
                           );
@@ -415,11 +472,11 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
               title: Text(
                   "Do you really want to quit. You will be counter as loser."),
               actions: <Widget>[
-                FlatButton(
+                TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text("No"),
                 ),
-                FlatButton(
+                TextButton(
                   onPressed: () {
                     quit = true;
                     databaseReference.child("$roomId").update({

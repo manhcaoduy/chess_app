@@ -37,12 +37,20 @@ class _SplashScreenState extends State<SplashScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                FlutterLogo(
-                  size: 40.0,
+                Image.asset(
+                  "assets/images/logo.png",
+                  width: 100,
+                  height: 100,
                 ),
-                Text(
-                  "Chess",
-                  style: TextStyle(fontSize: 40.0),
+                Padding(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Text(
+                    "Chess",
+                    style: TextStyle(
+                      fontSize: 40.0,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                 ),
               ],
             ),

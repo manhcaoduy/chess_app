@@ -1,11 +1,14 @@
 import 'dart:math';
 
+import 'package:audioplayers/audio_cache.dart';
+import 'package:chess_app/widget/circle_status.dart';
+import 'package:chess_app/widget/dialog.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:chess_vectors_flutter/chess_vectors_flutter.dart';
-import 'package:chess_app/widget/validator.dart';
+import 'package:chess_app/utils/validator.dart';
 
 class OnlineCreateScreen extends StatefulWidget {
   @override
@@ -14,11 +17,15 @@ class OnlineCreateScreen extends StatefulWidget {
 
 class _OnlineCreateScreenState extends State<OnlineCreateScreen>
     with Validator {
+  // immutable variables
   final TextEditingController _nameController = TextEditingController();
   final ChessBoardController controller = new ChessBoardController();
+  GlobalKey<CircleStatusState> circle1GlobalKey = GlobalKey();
+  GlobalKey<CircleStatusState> circle2GlobalKey = GlobalKey();
   final databaseReference = FirebaseDatabase.instance.reference();
   final String alphanum = '0123456789';
   final _formKey = GlobalKey<FormState>();
+  final player = AudioCache(prefix: 'assets/sound/');
 
   // mutable variables
   String fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -59,23 +66,110 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
     isStart = false;
     endgameMessenge = "";
     quit = false;
+    player.loadAll([
+      'check_sound.mp3',
+      'gameover_sound.mp3',
+      'move_sound.mp3',
+      'start_sound.mp3',
+    ]);
   }
+  /* ----------------------------------------------------------------------------------------------------------------------------------------- */
 
+  // error text form style
   final TextStyle _errorStyle = TextStyle(
     color: Colors.red,
     fontSize: 16.6,
   );
 
-  void dialog(BuildContext context, String messenge) {
-    showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text(messenge, style: TextStyle(fontSize: 20)),
-          );
+  // on form submit function
+  void _onFormSubmit() {
+    if (_formKey.currentState.validate()) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Processing Room ID')));
+      var name = _nameController.text;
+      roomId = key(6);
+      var createWhite = (dropdownValue == 'White');
+      databaseReference.child("$roomId").set({
+        "fen": fen,
+        "turn": "white",
+        "start": false,
+        "create_white": createWhite,
+        "name_1": name,
+        "name_2": '',
+        "gameover": false,
+        "endgame_status": '',
+      });
+      FirebaseDatabase.instance
+          .reference()
+          .child("$roomId")
+          .onValue
+          .listen((event) {
+        fen = event.snapshot.value['fen'];
+        turn = event.snapshot.value['turn'];
+        var start = event.snapshot.value['start'];
+        var isGameoverDb = event.snapshot.value['gameover'];
+        var endgameMessengeDb = event.snapshot.value['endgame_status'];
+
+        if (screen == 2) {
+          if (isGameoverDb && !quit) {
+            circle1GlobalKey.currentState.changeTurn(0);
+            circle2GlobalKey.currentState.changeTurn(0);
+          } else {
+            if ((turn == 'white' && isWhite) || (turn == 'black' && !isWhite)) {
+              circle1GlobalKey.currentState.changeTurn(1);
+              circle2GlobalKey.currentState.changeTurn(0);
+            } else {
+              circle1GlobalKey.currentState.changeTurn(0);
+              circle2GlobalKey.currentState.changeTurn(1);
+            }
+          }
+        }
+
+        Future.delayed(const Duration(milliseconds: 200)).then((value) {
+          if (!quit &&
+              !isGameoverDb &&
+              fen !=
+                  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
+            player.play("move_sound.mp3", volume: 5);
+          }
+          controller.game.load(fen);
+          controller.refreshBoard();
         });
+        if (start && !isStart) {
+          player.play("start_sound.mp3", volume: 20.0);
+          Future.delayed(const Duration(milliseconds: 200)).then((value) {
+            if ((turn == 'white' && isWhite) || (turn == 'black' && !isWhite)) {
+              circle1GlobalKey.currentState.changeTurn(1);
+              circle2GlobalKey.currentState.changeTurn(0);
+            } else {
+              circle1GlobalKey.currentState.changeTurn(0);
+              circle2GlobalKey.currentState.changeTurn(1);
+            }
+          });
+          setState(() {
+            isStart = true;
+            player2 = event.snapshot.value['name_2'];
+            screen = 2;
+          });
+        }
+        if (isGameoverDb && !isGameOver && !quit) {
+          player.play("gameover_sound.mp3", volume: 20.0);
+          dialog(context, endgameMessengeDb);
+          setState(() {
+            isGameOver = true;
+            endgameMessenge = endgameMessengeDb;
+          });
+        }
+      });
+      setState(() {
+        player1 = name;
+        isWhite = createWhite;
+        screen = 1;
+      });
+    }
   }
 
+  // form widget
   Widget formRoomID() {
     return Column(
       children: <Widget>[
@@ -159,59 +253,7 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
                     ),
                     child: ElevatedButton(
                       onPressed: () {
-                        if (_formKey.currentState.validate()) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Processing Room ID')));
-                          var name = _nameController.text;
-                          roomId = key(6);
-                          var createWhite = (dropdownValue == 'White');
-                          databaseReference.child("$roomId").set({
-                            "fen": fen,
-                            "turn": "white",
-                            "start": false,
-                            "create_white": createWhite,
-                            "name_1": name,
-                            "name_2": '',
-                            "gameover": false,
-                            "endgame_status": '',
-                          });
-                          FirebaseDatabase.instance
-                              .reference()
-                              .child("$roomId")
-                              .onValue
-                              .listen((event) {
-                            fen = event.snapshot.value['fen'];
-                            turn = event.snapshot.value['turn'];
-                            var start = event.snapshot.value['start'];
-                            var isGameoverDb = event.snapshot.value['gameover'];
-                            var endgameMessengeDb =
-                                event.snapshot.value['endgame_status'];
-                            Future.delayed(const Duration(milliseconds: 200))
-                                .then((value) {
-                              controller.game.load(fen);
-                              controller.refreshBoard();
-                            });
-                            if (start && !isStart) {
-                              setState(() {
-                                isStart = true;
-                                player2 = event.snapshot.value['name_2'];
-                                screen = 2;
-                              });
-                            }
-                            if (isGameoverDb && !isGameOver && !quit) {
-                              dialog(context, endgameMessengeDb);
-                              setState(() {
-                                isGameOver = true;
-                                endgameMessenge = endgameMessengeDb;
-                              });
-                            }
-                          });
-                          setState(() {
-                            player1 = name;
-                            isWhite = createWhite;
-                            screen = 1;
-                          });
-                        }
+                        _onFormSubmit();
                       },
                       style: ElevatedButton.styleFrom(
                         padding: EdgeInsets.symmetric(vertical: minValue * 2.4),
@@ -230,6 +272,94 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
     );
   }
 
+  /* ----------------------------------------------------------------------------------------------------------------------------------------- */
+
+  void _onDraw() {
+    if (isGameOver) return;
+
+    player.play("gameover_sound.mp3", volume: 20.0);
+    dialog(context, "Draw");
+    Future.delayed(const Duration(milliseconds: 1500)).then((value) {
+      Future.delayed(const Duration(milliseconds: 500)).then((value) {
+        controller.game.load(fen);
+        controller.refreshBoard();
+      });
+      if ((isWhite && turn == 'white') || (!isWhite && turn == 'black')) {
+        databaseReference.child("$roomId").update({
+          "gameover": true,
+          "endgame_status": 'Draw !!!!',
+        });
+      }
+      setState(() {
+        isGameOver = true;
+        endgameMessenge = "Draw !!!!";
+      });
+    });
+  }
+
+  Null _onCheckmate(PieceColor loser) {
+    if (isGameOver) return;
+
+    player.play("gameover_sound.mp3", volume: 20.0);
+    if (loser == PieceColor.Black) {
+      dialog(context, "Checkmate. White wins");
+    } else {
+      dialog(context, "Checkmate. Black wins");
+    }
+    Future.delayed(const Duration(milliseconds: 1500)).then((value) {
+      if ((isWhite && turn == 'white') || (!isWhite && turn == 'black')) {
+        databaseReference.child("$roomId").update({
+          "gameover": true,
+          "endgame_status": (loser == PieceColor.Black
+              ? "Checkmate. White wins."
+              : "Checkmate. Black wins"),
+        });
+      }
+      setState(() {
+        endgameMessenge = (loser == PieceColor.Black
+            ? "Checkmate. White wins."
+            : "Checkmate. Black wins");
+        isGameOver = true;
+      });
+    });
+  }
+
+  Null _onMove(String move) {
+    if ((turn == "white" && !isWhite) || (turn == "black" && isWhite)) {
+      controller.game.load(fen);
+      controller.refreshBoard();
+      return;
+    }
+    fen = controller.game.fen;
+    turn = (isWhite) ? "black" : "white";
+    databaseReference.child("$roomId").update({
+      "fen": fen,
+      "turn": (isWhite) ? "black" : "white",
+    });
+  }
+
+  Null _onCheck(PieceColor color) {
+    player.disableLog();
+    player.play("check_sound.mp3", volume: 20.0);
+  }
+
+  void _onResign() {
+    player.play("gameover_sound.mp3", volume: 20.0);
+    Navigator.of(context).pop();
+    databaseReference.child("$roomId").update({
+      "gameover": true,
+      "endgame_status": (isWhite
+          ? "White resigns. Black wins."
+          : "Black resigns. White wins"),
+    });
+    setState(() {
+      isGameOver = true;
+      endgameMessenge = (isWhite
+          ? "White resigns. Black wins."
+          : "Black resigns. White wins");
+    });
+  }
+
   Widget chessboard() {
     return Column(
       children: [
@@ -246,7 +376,10 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Padding(
-                padding: const EdgeInsets.only(left: 20.0),
+                padding: const EdgeInsets.only(
+                  left: 20.0,
+                  right: 20.0,
+                ),
                 child: Row(
                   children: [
                     Image.asset(
@@ -262,6 +395,7 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
                                 fontSize: 20.0, fontWeight: FontWeight.bold)),
                       ),
                     ),
+                    CircleStatus(key: circle2GlobalKey),
                   ],
                 ),
               ),
@@ -270,69 +404,10 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
                   size: (MediaQuery.of(context).size.height > 700
                       ? MediaQuery.of(context).size.width
                       : MediaQuery.of(context).size.width * 0.9),
-                  onDraw: () {
-                    if (isGameOver) return;
-                    dialog(context, "Draw");
-                    Future.delayed(const Duration(milliseconds: 1500))
-                        .then((value) {
-                      Future.delayed(const Duration(milliseconds: 500))
-                          .then((value) {
-                        controller.game.load(fen);
-                        controller.refreshBoard();
-                      });
-                      if ((isWhite && turn == 'white') ||
-                          (!isWhite && turn == 'black')) {
-                        databaseReference.child("$roomId").update({
-                          "gameover": true,
-                          "endgame_status": 'Draw !!!!',
-                        });
-                      }
-                      setState(() {
-                        isGameOver = true;
-                        endgameMessenge = "Draw !!!!";
-                      });
-                    });
-                  },
-                  onCheckMate: (loser) {
-                    if (isGameOver) return;
-                    if (loser == PieceColor.Black) {
-                      dialog(context, "Checkmate. White wins");
-                    } else {
-                      dialog(context, "Checkmate. Black wins");
-                    }
-                    Future.delayed(const Duration(milliseconds: 1500))
-                        .then((value) {
-                      if ((isWhite && turn == 'white') ||
-                          (!isWhite && turn == 'black')) {
-                        databaseReference.child("$roomId").update({
-                          "gameover": true,
-                          "endgame_status": (loser == PieceColor.Black
-                              ? "Checkmate. White wins."
-                              : "Checkmate. Black wins"),
-                        });
-                      }
-                      setState(() {
-                        endgameMessenge = (loser == PieceColor.Black
-                            ? "Checkmate. White wins."
-                            : "Checkmate. Black wins");
-                        isGameOver = true;
-                      });
-                    });
-                  },
-                  onMove: (move) {
-                    if ((turn == "white" && !isWhite) ||
-                        (turn == "black" && isWhite)) {
-                      controller.game.load(fen);
-                      controller.refreshBoard();
-                    }
-                    fen = controller.game.fen;
-                    turn = (isWhite) ? "black" : "white";
-                    databaseReference.child("$roomId").update({
-                      "fen": fen,
-                      "turn": (isWhite) ? "black" : "white",
-                    });
-                  },
-                  onCheck: (color) {},
+                  onDraw: _onDraw,
+                  onCheckMate: _onCheckmate,
+                  onMove: _onMove,
+                  onCheck: _onCheck,
                   chessBoardController: controller,
                   enableUserMoves: (isGameOver ? false : true),
                   whiteSideTowardsUser: isWhite,
@@ -340,7 +415,10 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(left: 20.0),
+                padding: const EdgeInsets.only(
+                  left: 20.0,
+                  right: 20.0,
+                ),
                 child: Row(
                   children: [
                     Image.asset(
@@ -353,9 +431,12 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
                         padding: const EdgeInsets.all(20.0),
                         child: Text(player1,
                             style: TextStyle(
-                                fontSize: 20.0, fontWeight: FontWeight.bold)),
+                              fontSize: 20.0,
+                              fontWeight: FontWeight.bold,
+                            )),
                       ),
                     ),
+                    CircleStatus(key: circle1GlobalKey),
                   ],
                 ),
               ),
@@ -394,19 +475,7 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
                             TextButton(
                               child: Text('Yes'),
                               onPressed: () {
-                                Navigator.of(context).pop();
-                                databaseReference.child("$roomId").update({
-                                  "gameover": true,
-                                  "endgame_status": (isWhite
-                                      ? "White resigns. Black wins."
-                                      : "Black resigns. White wins"),
-                                });
-                                setState(() {
-                                  isGameOver = true;
-                                  endgameMessenge = (isWhite
-                                      ? "White resigns. Black wins."
-                                      : "Black resigns. White wins");
-                                });
+                                _onResign();
                               },
                             ),
                           ],
@@ -431,6 +500,9 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
     );
   }
 
+  /* ----------------------------------------------------------------------------------------------------------------------------------------- */
+
+  // waiting for opponent
   Widget waiting() {
     return Container(
       color: Colors.black38,
@@ -463,6 +535,21 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
     );
   }
 
+  /* ----------------------------------------------------------------------------------------------------------------------------------------- */
+
+  void _onQuit() {
+    quit = true;
+    databaseReference.child("$roomId").update({
+      "gameover": true,
+      "endgame_status": (isStart
+          ? (isWhite ? "White quits. Black wins!" : "Black quits. White wins")
+          : "No opponent."),
+    });
+    Navigator.pop(context);
+    Navigator.pop(context);
+  }
+
+  // on back pressed function
   Future<bool> _onBackPressed() {
     return showDialog(
         context: context,
@@ -471,23 +558,13 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
                   ? "Do you really want to quit. You will be counter as loser."
                   : "Do you really want to quit. The game will be canceled."),
               actions: <Widget>[
-                FlatButton(
+                TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text("No"),
                 ),
-                FlatButton(
+                TextButton(
                   onPressed: () {
-                    quit = true;
-                    databaseReference.child("$roomId").update({
-                      "gameover": true,
-                      "endgame_status": (isStart
-                          ? (isWhite
-                              ? "White quits. Black wins!"
-                              : "Black quits. White wins")
-                          : "No opponent."),
-                    });
-                    Navigator.pop(context);
-                    Navigator.pop(context);
+                    _onQuit();
                   },
                   child: Text("Yes"),
                 )
