@@ -79,7 +79,7 @@ class _ComputerPlayState extends State<ComputerPlay> {
     if (data.isGameOver) return;
 
     player.play("gameover_sound.mp3", volume: 20.0);
-    dialog(context, "Draw");
+    dialog(context, "Draw", 2);
     data.onUpdateEndgameMessenge(_fen, "Draw!!!");
   }
 
@@ -93,6 +93,7 @@ class _ComputerPlayState extends State<ComputerPlay> {
       (loser == PieceColor.Black
           ? "Checkmate. White wins"
           : "Checkmate. Black wins"),
+      (loser == PieceColor.Black ? 0 : 1),
     );
     data.onUpdateEndgameMessenge(
       _fen,

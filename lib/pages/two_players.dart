@@ -93,6 +93,7 @@ class _TwoPlayersState extends State<TwoPlayers> {
       (piece == 'white'
           ? "White has lost on time. Black wins"
           : "Black has lost on time. White wins"),
+      (piece == 'white' ? 1 : 0),
     );
     setState(() {
       isGameOver = true;
@@ -152,7 +153,7 @@ class _TwoPlayersState extends State<TwoPlayers> {
     player.play("gameover_sound.mp3", volume: 20.0);
     whiteController.pause();
     blackController.pause();
-    dialog(context, "Draw");
+    dialog(context, "Draw", 2);
     setState(() {
       isGameOver = true;
       endgameMessenge = "Draw";
@@ -170,10 +171,12 @@ class _TwoPlayersState extends State<TwoPlayers> {
     blackController.pause();
 
     dialog(
-        context,
-        ((loser == PieceColor.Black)
-            ? "Checkmate. White wins"
-            : "Checkmate. Black wins"));
+      context,
+      ((loser == PieceColor.Black)
+          ? "Checkmate. White wins"
+          : "Checkmate. Black wins"),
+      ((loser == PieceColor.Black) ? 0 : 1),
+    );
     setState(() {
       isGameOver = true;
       endgameMessenge = ((loser == PieceColor.Black)
@@ -294,7 +297,7 @@ class _TwoPlayersState extends State<TwoPlayers> {
                         child: ChessBoard(
                           size: (MediaQuery.of(context).size.height > 700
                               ? MediaQuery.of(context).size.width
-                              : MediaQuery.of(context).size.width * 0.9),
+                              : MediaQuery.of(context).size.width * 0.85),
                           onDraw: _onDraw,
                           onCheckMate: _onCheckmate,
                           onMove: _onMove,

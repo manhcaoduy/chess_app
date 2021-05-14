@@ -1,4 +1,5 @@
 import 'package:audioplayers/audio_cache.dart';
+import 'package:chess_app/utils/dialog_state.dart';
 import 'package:chess_app/widget/circle_status.dart';
 import 'package:chess_app/widget/dialog.dart';
 import 'package:flutter/material.dart';
@@ -68,10 +69,12 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
         if (snapshot.value == null ||
             (snapshot.value["start"] == true ||
                 snapshot.value["gameover"] == true)) {
-          dialog(context, "Room ID $inputRoomId has not been created yet");
+          dialog(context, "Room ID $inputRoomId has not been created yet", 3);
         } else if (snapshot.value["start"] == true) {
-          dialog(context,
-              "Room ID $inputRoomId has already started. You cannot join as player. But you can spectate it.");
+          dialog(
+              context,
+              "Room ID $inputRoomId has already started. You cannot join as player. But you can spectate it.",
+              3);
         } else {
           roomId = inputRoomId;
           databaseReference.child("$roomId").update({
@@ -120,7 +123,8 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
             });
             if (isGameoverDb && !isGameOver && !quit) {
               player.play("gameover_sound.mp3", volume: 20.0);
-              dialog(context, endgameMessengeDb);
+              dialog(
+                  context, endgameMessengeDb, dialogState(endgameMessengeDb));
               setState(() {
                 isGameOver = true;
                 endgameMessenge = endgameMessengeDb;
@@ -256,7 +260,7 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
   void _onDraw() {
     if (isGameOver) return;
     player.play("gameover_sound.mp3", volume: 20.0);
-    dialog(context, "Draw");
+    dialog(context, "Draw", 2);
     Future.delayed(const Duration(milliseconds: 1500)).then((value) {
       databaseReference.child("$roomId").update({
         "gameover": true,
@@ -273,10 +277,12 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
     if (isGameOver) return;
     player.play("gameover_sound.mp3", volume: 20.0);
     dialog(
-        context,
-        (loser == PieceColor.Black
-            ? "Checkmate. White wins"
-            : "Checkmate. Black wins"));
+      context,
+      (loser == PieceColor.Black
+          ? "Checkmate. White wins"
+          : "Checkmate. Black wins"),
+      (loser == PieceColor.Black ? 0 : 1),
+    );
     Future.delayed(const Duration(milliseconds: 1500)).then((value) {
       databaseReference.child("$roomId").update({
         "gameover": true,
@@ -372,7 +378,7 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                 child: ChessBoard(
                   size: (MediaQuery.of(context).size.height > 700
                       ? MediaQuery.of(context).size.width
-                      : MediaQuery.of(context).size.width * 0.9),
+                      : MediaQuery.of(context).size.width * 0.85),
                   onDraw: _onDraw,
                   onCheckMate: _onCheckmate,
                   onMove: _onMove,

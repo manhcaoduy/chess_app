@@ -1,4 +1,5 @@
 import 'package:audioplayers/audio_cache.dart';
+import 'package:chess_app/utils/dialog_state.dart';
 import 'package:chess_app/widget/circle_status.dart';
 import 'package:chess_app/widget/dialog.dart';
 import 'package:flutter/material.dart';
@@ -56,10 +57,12 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
       var inputRoomId = _roomIdController.text;
       databaseReference.child("$inputRoomId").once().then((snapshot) {
         if (snapshot.value == null) {
-          dialog(context, "Room ID $inputRoomId has not been created yet");
+          dialog(context, "Room ID $inputRoomId has not been created yet", 3);
         } else if (snapshot.value["start"] == false) {
-          dialog(context,
-              "Room ID $inputRoomId has not started yet. You cannot join as spectator. But you can join it.");
+          dialog(
+              context,
+              "Room ID $inputRoomId has not started yet. You cannot join as spectator. But you can join it.",
+              3);
         } else {
           roomId = inputRoomId;
           Future.delayed(const Duration(seconds: 1)).then((value) {
@@ -95,7 +98,7 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
               controller.refreshBoard();
             });
             if (isGameOverDb) {
-              dialog(context, endgameMessengeDb);
+              dialog(context, endgameMessengeDb, dialogState(endgameMessenge));
               setState(() {
                 isGameOver = true;
                 endgameMessenge = endgameMessengeDb;
@@ -243,7 +246,7 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
                   child: ChessBoard(
                     size: (MediaQuery.of(context).size.height > 700
                         ? MediaQuery.of(context).size.width
-                        : MediaQuery.of(context).size.width * 0.9),
+                        : MediaQuery.of(context).size.width * 0.85),
                     onDraw: () {
                       player.play("gameover_sound.mp3", volume: 20.0);
                     },

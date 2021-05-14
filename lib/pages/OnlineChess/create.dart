@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:audioplayers/audio_cache.dart';
+import 'package:chess_app/utils/dialog_state.dart';
 import 'package:chess_app/widget/circle_status.dart';
 import 'package:chess_app/widget/dialog.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -154,7 +155,7 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
         }
         if (isGameoverDb && !isGameOver && !quit) {
           player.play("gameover_sound.mp3", volume: 20.0);
-          dialog(context, endgameMessengeDb);
+          dialog(context, endgameMessenge, dialogState(endgameMessenge));
           setState(() {
             isGameOver = true;
             endgameMessenge = endgameMessengeDb;
@@ -278,7 +279,7 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
     if (isGameOver) return;
 
     player.play("gameover_sound.mp3", volume: 20.0);
-    dialog(context, "Draw");
+    dialog(context, "Draw", 2);
     Future.delayed(const Duration(milliseconds: 1500)).then((value) {
       Future.delayed(const Duration(milliseconds: 500)).then((value) {
         controller.game.load(fen);
@@ -302,9 +303,9 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
 
     player.play("gameover_sound.mp3", volume: 20.0);
     if (loser == PieceColor.Black) {
-      dialog(context, "Checkmate. White wins");
+      dialog(context, "Checkmate. White wins", 0);
     } else {
-      dialog(context, "Checkmate. Black wins");
+      dialog(context, "Checkmate. Black wins", 1);
     }
     Future.delayed(const Duration(milliseconds: 1500)).then((value) {
       if ((isWhite && turn == 'white') || (!isWhite && turn == 'black')) {
@@ -403,7 +404,7 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
                 child: ChessBoard(
                   size: (MediaQuery.of(context).size.height > 700
                       ? MediaQuery.of(context).size.width
-                      : MediaQuery.of(context).size.width * 0.9),
+                      : MediaQuery.of(context).size.width * 0.85),
                   onDraw: _onDraw,
                   onCheckMate: _onCheckmate,
                   onMove: _onMove,
