@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:audioplayers/audio_cache.dart';
 import 'package:chess_app/utils/dialog_state.dart';
 import 'package:chess_app/widget/circle_status.dart';
 import 'package:chess_app/widget/dialog.dart';
@@ -10,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:chess_vectors_flutter/chess_vectors_flutter.dart';
 import 'package:chess_app/utils/validator.dart';
+import 'package:assets_audio_player/assets_audio_player.dart';
 
 class OnlineCreateScreen extends StatefulWidget {
   @override
@@ -26,7 +26,7 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
   final databaseReference = FirebaseDatabase.instance.reference();
   final String alphanum = '0123456789';
   final _formKey = GlobalKey<FormState>();
-  final player = AudioCache(prefix: 'assets/sound/');
+  final assetsAudioPlayer = AssetsAudioPlayer();
 
   // mutable variables
   String fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -67,12 +67,6 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
     isStart = false;
     endgameMessenge = "";
     quit = false;
-    player.loadAll([
-      'check_sound.mp3',
-      'gameover_sound.mp3',
-      'move_sound.mp3',
-      'start_sound.mp3',
-    ]);
   }
   /* ----------------------------------------------------------------------------------------------------------------------------------------- */
 
@@ -131,13 +125,13 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
               !isGameoverDb &&
               fen !=
                   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
-            player.play("move_sound.mp3", volume: 5);
+            assetsAudioPlayer.open(Audio("assets/sound/move_sound.mp3"));
           }
           controller.game.load(fen);
           controller.refreshBoard();
         });
         if (start && !isStart) {
-          player.play("start_sound.mp3", volume: 20.0);
+          assetsAudioPlayer.open(Audio("assets/sound/start_sound.mp3"));
           Future.delayed(const Duration(milliseconds: 200)).then((value) {
             if ((turn == 'white' && isWhite) || (turn == 'black' && !isWhite)) {
               circle1GlobalKey.currentState.changeTurn(1);
@@ -154,8 +148,10 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
           });
         }
         if (isGameoverDb && !isGameOver && !quit) {
-          player.play("gameover_sound.mp3", volume: 20.0);
-          dialog(context, endgameMessenge, dialogState(endgameMessenge));
+          Future.delayed(const Duration(milliseconds: 500)).then((value) {
+            assetsAudioPlayer.open(Audio("assets/sound/gameover_sound.mp3"));
+          });
+          dialog(context, endgameMessengeDb, dialogState(endgameMessenge));
           setState(() {
             isGameOver = true;
             endgameMessenge = endgameMessengeDb;
@@ -277,8 +273,9 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
 
   void _onDraw() {
     if (isGameOver) return;
-
-    player.play("gameover_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/gameover_sound.mp3"));
+    });
     dialog(context, "Draw", 2);
     Future.delayed(const Duration(milliseconds: 1500)).then((value) {
       Future.delayed(const Duration(milliseconds: 500)).then((value) {
@@ -300,14 +297,19 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
 
   Null _onCheckmate(PieceColor loser) {
     if (isGameOver) return;
-
-    player.play("gameover_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/gameover_sound.mp3"));
+    });
     if (loser == PieceColor.Black) {
       dialog(context, "Checkmate. White wins", 0);
     } else {
       dialog(context, "Checkmate. Black wins", 1);
     }
     Future.delayed(const Duration(milliseconds: 1500)).then((value) {
+      Future.delayed(const Duration(milliseconds: 500)).then((value) {
+        controller.game.load(fen);
+        controller.refreshBoard();
+      });
       if ((isWhite && turn == 'white') || (!isWhite && turn == 'black')) {
         databaseReference.child("$roomId").update({
           "gameover": true,
@@ -340,12 +342,15 @@ class _OnlineCreateScreenState extends State<OnlineCreateScreen>
   }
 
   Null _onCheck(PieceColor color) {
-    player.disableLog();
-    player.play("check_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/check_sound.mp3"));
+    });
   }
 
   void _onResign() {
-    player.play("gameover_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/gameover_sound.mp3"));
+    });
     Navigator.of(context).pop();
     databaseReference.child("$roomId").update({
       "gameover": true,

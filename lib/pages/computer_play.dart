@@ -6,7 +6,7 @@ import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:chess_app/utils/utils.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:redux/redux.dart';
-import 'package:audioplayers/audio_cache.dart';
+import 'package:assets_audio_player/assets_audio_player.dart';
 
 // Computer data format taken from the redux store
 class _ComputerData {
@@ -59,26 +59,23 @@ class _ComputerPlayState extends State<ComputerPlay> {
   // constants
   ChessBoardController controller = new ChessBoardController();
   String _fen;
-  final player = AudioCache(prefix: 'assets/sound/');
+  final assetsAudioPlayer = AssetsAudioPlayer();
 
   // initialize variables
   @override
   void initState() {
     super.initState();
-    player.loadAll([
-      'check_sound.mp3',
-      'gameover_sound.mp3',
-      'move_sound.mp3',
-      'start_sound.mp3',
-    ]);
-    player.play('start_sound.mp3', volume: 20.0);
+    assetsAudioPlayer.open(
+      Audio("assets/sound/start_sound.mp3"),
+    );
   }
 
   // onDraw function
   void _onDrawCallback(_ComputerData data) {
     if (data.isGameOver) return;
-
-    player.play("gameover_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/gameover_sound.mp3"));
+    });
     dialog(context, "Draw", 2);
     data.onUpdateEndgameMessenge(_fen, "Draw!!!");
   }
@@ -86,8 +83,9 @@ class _ComputerPlayState extends State<ComputerPlay> {
   // onCheckmate function
   void _onCheckmateCallback(PieceColor loser, _ComputerData data) {
     if (data.isGameOver) return;
-
-    player.play("gameover_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/gameover_sound.mp3"));
+    });
     dialog(
       context,
       (loser == PieceColor.Black
@@ -103,7 +101,7 @@ class _ComputerPlayState extends State<ComputerPlay> {
 
   // onMove function
   Null _onMoveCallback(String move) {
-    player.play("move_sound.mp3", volume: 5.0);
+    assetsAudioPlayer.open(Audio("assets/sound/move_sound.mp3"));
     _fen = controller.game.fen;
     final nextMove = getRandomMove(_fen);
     if (nextMove != null) {
@@ -117,8 +115,9 @@ class _ComputerPlayState extends State<ComputerPlay> {
 
   // onCheck function
   Null _onCheck(PieceColor color) {
-    player.disableLog();
-    player.play("check_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/check_sound.mp3"));
+    });
   }
 
   @override
@@ -231,8 +230,12 @@ class _ComputerPlayState extends State<ComputerPlay> {
                                     child: Text('Yes'),
                                     onPressed: () {
                                       // resign
-                                      player.play("gameover_sound.mp3",
-                                          volume: 20.0);
+                                      Future.delayed(
+                                              const Duration(milliseconds: 500))
+                                          .then((value) {
+                                        assetsAudioPlayer.open(Audio(
+                                            "assets/sound/gameover_sound.mp3"));
+                                      });
                                       Navigator.of(context).pop();
                                       data.onUpdateEndgameMessenge(
                                         _fen,
@@ -281,8 +284,8 @@ class _ComputerPlayState extends State<ComputerPlay> {
                                     child: Text('Yes'),
                                     onPressed: () {
                                       // restart
-                                      player.play("start_sound.mp3",
-                                          volume: 20.0);
+                                      assetsAudioPlayer.open(Audio(
+                                          "assets/sound/start_sound.mp3"));
                                       Navigator.of(context).pop();
                                       data.onRestart();
                                     },

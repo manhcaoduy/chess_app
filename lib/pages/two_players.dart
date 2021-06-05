@@ -1,8 +1,8 @@
-import 'package:audioplayers/audio_cache.dart';
 import 'package:chess_app/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:custom_timer/custom_timer.dart';
+import 'package:assets_audio_player/assets_audio_player.dart';
 
 class TwoPlayers extends StatefulWidget {
   @override
@@ -17,12 +17,12 @@ class _TwoPlayersState extends State<TwoPlayers> {
   GlobalKey<_PauseButtonState> pauseGlobalKey = GlobalKey();
   GlobalKey<_CircleStatusState> circle1GlobalKey = GlobalKey();
   GlobalKey<_CircleStatusState> circle2GlobalKey = GlobalKey();
-  final player = AudioCache(prefix: 'assets/sound/');
   int turn = 0;
   bool isGameOver = false;
   String endgameMessenge = '';
   String _fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
   bool isPause = true;
+  final assetsAudioPlayer = AssetsAudioPlayer();
 
   // White Move callback
   void whiteMove() {
@@ -48,12 +48,6 @@ class _TwoPlayersState extends State<TwoPlayers> {
     isGameOver = false;
     endgameMessenge = '';
     isPause = true;
-    player.loadAll([
-      'check_sound.mp3',
-      'gameover_sound.mp3',
-      'move_sound.mp3',
-      'start_sound.mp3',
-    ]);
   }
 
   // Back button Pressed function
@@ -85,7 +79,9 @@ class _TwoPlayersState extends State<TwoPlayers> {
     circle1GlobalKey.currentState.changeTurn(1);
     circle2GlobalKey.currentState.changeTurn(1);
     pauseGlobalKey.currentState.changeSymbol(0);
-    player.play("gameover_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/gameover_sound.mp3"));
+    });
     whiteController.pause();
     blackController.pause();
     dialog(
@@ -107,7 +103,9 @@ class _TwoPlayersState extends State<TwoPlayers> {
     circle1GlobalKey.currentState.changeTurn(1);
     circle2GlobalKey.currentState.changeTurn(1);
     pauseGlobalKey.currentState.changeSymbol(0);
-    player.play("start_sound.mp3", volume: 20.0);
+    assetsAudioPlayer.open(
+      Audio("assets/sound/start_sound.mp3"),
+    );
     Navigator.of(context).pop();
     whiteController.reset();
     blackController.reset();
@@ -150,7 +148,9 @@ class _TwoPlayersState extends State<TwoPlayers> {
     circle1GlobalKey.currentState.changeTurn(1);
     circle2GlobalKey.currentState.changeTurn(1);
     pauseGlobalKey.currentState.changeSymbol(0);
-    player.play("gameover_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/gameover_sound.mp3"));
+    });
     whiteController.pause();
     blackController.pause();
     dialog(context, "Draw", 2);
@@ -166,7 +166,9 @@ class _TwoPlayersState extends State<TwoPlayers> {
     circle1GlobalKey.currentState.changeTurn(1);
     circle2GlobalKey.currentState.changeTurn(1);
     pauseGlobalKey.currentState.changeSymbol(0);
-    player.play("gameover_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/gameover_sound.mp3"));
+    });
     whiteController.pause();
     blackController.pause();
 
@@ -187,8 +189,9 @@ class _TwoPlayersState extends State<TwoPlayers> {
 
   //onCheck function
   Null _onCheck(PieceColor color) {
-    player.disableLog();
-    player.play("check_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/check_sound.mp3"));
+    });
   }
 
   // onMove function
@@ -200,8 +203,9 @@ class _TwoPlayersState extends State<TwoPlayers> {
       controller.refreshBoard();
       return;
     }
-
-    player.play("move_sound.mp3", volume: 5);
+    assetsAudioPlayer.open(
+      Audio("assets/sound/move_sound.mp3"),
+    );
 
     if (turn == 0) {
       whiteMove();
@@ -214,7 +218,9 @@ class _TwoPlayersState extends State<TwoPlayers> {
 
   @override
   Widget build(BuildContext context) {
-    player.play("start_sound.mp3", volume: 20.0);
+    assetsAudioPlayer.open(
+      Audio("assets/sound/start_sound.mp3"),
+    );
     Future.delayed(const Duration(milliseconds: 200)).then((_) {
       controller.game.load(_fen);
       controller.refreshBoard();

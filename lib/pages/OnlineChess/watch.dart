@@ -1,4 +1,3 @@
-import 'package:audioplayers/audio_cache.dart';
 import 'package:chess_app/utils/dialog_state.dart';
 import 'package:chess_app/widget/circle_status.dart';
 import 'package:chess_app/widget/dialog.dart';
@@ -7,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:chess_app/utils/validator.dart';
 import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:assets_audio_player/assets_audio_player.dart';
 
 class OnlineWatchScreen extends StatefulWidget {
   @override
@@ -20,7 +20,6 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
   final ChessBoardController controller = new ChessBoardController();
   GlobalKey<CircleStatusState> circle1GlobalKey = GlobalKey();
   GlobalKey<CircleStatusState> circle2GlobalKey = GlobalKey();
-  final player = AudioCache(prefix: 'assets/sound/');
   final double minValue = 8.0;
   final _formKey = GlobalKey<FormState>();
   String roomId = "";
@@ -32,6 +31,7 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
   bool createWhite = true;
   bool isGameOver = false;
   String endgameMessenge = '';
+  final assetsAudioPlayer = AssetsAudioPlayer();
 
   @override
   void initState() {
@@ -77,7 +77,7 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
             fen = event.snapshot.value['fen'];
             var isGameOverDb = event.snapshot.value['gameover'];
             var endgameMessengeDb = event.snapshot.value['endgame_status'];
-            player.play("move_sound.mp3", volume: 5.0);
+            assetsAudioPlayer.open(Audio("assets/sound/move_sound.mp3"));
             if (screen == 1) {
               if (isGameOverDb) {
                 circle1GlobalKey.currentState.changeTurn(0);
@@ -105,7 +105,7 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
               });
             }
           });
-          player.play("start_sound.mp3", volume: 20.0);
+          assetsAudioPlayer.open(Audio("assets/sound/start_sound.mp3"));
           Future.delayed(const Duration(milliseconds: 200)).then((value) {
             if (turn == 'white') {
               circle1GlobalKey.currentState.changeTurn(1);
@@ -248,15 +248,26 @@ class _OnlineWatchScreenState extends State<OnlineWatchScreen> with Validator {
                         ? MediaQuery.of(context).size.width
                         : MediaQuery.of(context).size.width * 0.85),
                     onDraw: () {
-                      player.play("gameover_sound.mp3", volume: 20.0);
+                      Future.delayed(const Duration(milliseconds: 500))
+                          .then((value) {
+                        assetsAudioPlayer
+                            .open(Audio("assets/sound/gameover_sound.mp3"));
+                      });
                     },
                     onCheckMate: (loser) {
-                      player.play("gameover_sound.mp3", volume: 20.0);
+                      Future.delayed(const Duration(milliseconds: 500))
+                          .then((value) {
+                        assetsAudioPlayer
+                            .open(Audio("assets/sound/gameover_sound.mp3"));
+                      });
                     },
                     onMove: (move) {},
                     onCheck: (color) {
-                      player.disableLog();
-                      player.play("check_sound.mp3", volume: 20.0);
+                      Future.delayed(const Duration(milliseconds: 500))
+                          .then((value) {
+                        assetsAudioPlayer
+                            .open(Audio("assets/sound/check_sound.mp3"));
+                      });
                     },
                     chessBoardController: controller,
                     boardType: BoardType.darkBrown,

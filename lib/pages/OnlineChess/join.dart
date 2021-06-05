@@ -1,4 +1,3 @@
-import 'package:audioplayers/audio_cache.dart';
 import 'package:chess_app/utils/dialog_state.dart';
 import 'package:chess_app/widget/circle_status.dart';
 import 'package:chess_app/widget/dialog.dart';
@@ -7,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:chess_app/utils/validator.dart';
 import 'package:flutter_chess_board/flutter_chess_board.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:assets_audio_player/assets_audio_player.dart';
 
 class OnlineJoinScreen extends StatefulWidget {
   @override
@@ -21,7 +21,6 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
   final ChessBoardController controller = new ChessBoardController();
   GlobalKey<CircleStatusState> circle1GlobalKey = GlobalKey();
   GlobalKey<CircleStatusState> circle2GlobalKey = GlobalKey();
-  final player = AudioCache(prefix: 'assets/sound/');
   final double minValue = 8.0;
   final _formKey = GlobalKey<FormState>();
   String roomId = "";
@@ -34,6 +33,7 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
   bool isWhite = false;
   String endgameMessenge = "";
   bool quit = false;
+  final assetsAudioPlayer = AssetsAudioPlayer();
 
   @override
   void initState() {
@@ -44,12 +44,12 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
     isGameOver = false;
     endgameMessenge = "";
     quit = false;
-    player.loadAll([
-      'check_sound.mp3',
-      'gameover_sound.mp3',
-      'move_sound.mp3',
-      'start_sound.mp3',
-    ]);
+    // player.loadAll([
+    //   'check_sound.mp3',
+    //   'gameover_sound.mp3',
+    //   'move_sound.mp3',
+    //   'start_sound.mp3',
+    // ]);
   }
 
   // -------------------------------------------- form ----------------------------------------------
@@ -116,13 +116,16 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
                   !isGameoverDb &&
                   fen !=
                       "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
-                player.play("move_sound.mp3", volume: 5);
+                assetsAudioPlayer.open(Audio("assets/sound/move_sound.mp3"));
               }
               controller.game.load(fen);
               controller.refreshBoard();
             });
             if (isGameoverDb && !isGameOver && !quit) {
-              player.play("gameover_sound.mp3", volume: 20.0);
+              Future.delayed(const Duration(milliseconds: 500)).then((value) {
+                assetsAudioPlayer
+                    .open(Audio("assets/sound/gameover_sound.mp3"));
+              });
               dialog(
                   context, endgameMessengeDb, dialogState(endgameMessengeDb));
               setState(() {
@@ -131,7 +134,7 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
               });
             }
           });
-          player.play("start_sound.mp3", volume: 20.0);
+          assetsAudioPlayer.open(Audio("assets/sound/start_sound.mp3"));
           Future.delayed(const Duration(milliseconds: 200)).then((value) {
             if ((turn == 'white' && isWhite) || (turn == 'black' && !isWhite)) {
               circle1GlobalKey.currentState.changeTurn(1);
@@ -259,9 +262,15 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
   // -------------------------------------- Chessboard ---------------------------------------------------
   void _onDraw() {
     if (isGameOver) return;
-    player.play("gameover_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/gameover_sound.mp3"));
+    });
     dialog(context, "Draw", 2);
     Future.delayed(const Duration(milliseconds: 1500)).then((value) {
+      Future.delayed(const Duration(milliseconds: 500)).then((value) {
+        controller.game.load(fen);
+        controller.refreshBoard();
+      });
       databaseReference.child("$roomId").update({
         "gameover": true,
         "endgame_status": 'Draw !!!!',
@@ -275,7 +284,9 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
 
   Null _onCheckmate(PieceColor loser) {
     if (isGameOver) return;
-    player.play("gameover_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/gameover_sound.mp3"));
+    });
     dialog(
       context,
       (loser == PieceColor.Black
@@ -284,6 +295,10 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
       (loser == PieceColor.Black ? 0 : 1),
     );
     Future.delayed(const Duration(milliseconds: 1500)).then((value) {
+      Future.delayed(const Duration(milliseconds: 500)).then((value) {
+        controller.game.load(fen);
+        controller.refreshBoard();
+      });
       databaseReference.child("$roomId").update({
         "gameover": true,
         "endgame_status": (loser == PieceColor.Black
@@ -313,7 +328,9 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
   }
 
   void _onResign() {
-    player.play("gameover_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/gameover_sound.mp3"));
+    });
     Navigator.of(context).pop();
     databaseReference.child("$roomId").update({
       "gameover": true,
@@ -330,8 +347,9 @@ class _OnlineJoinScreenState extends State<OnlineJoinScreen> with Validator {
   }
 
   Null _onCheck(PieceColor color) {
-    player.disableLog();
-    player.play("check_sound.mp3", volume: 20.0);
+    Future.delayed(const Duration(milliseconds: 500)).then((value) {
+      assetsAudioPlayer.open(Audio("assets/sound/check_sound.mp3"));
+    });
   }
 
   Widget chessBoard() {
